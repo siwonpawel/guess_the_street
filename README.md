@@ -59,3 +59,13 @@ time by the data pipeline — see `scripts/README.md` for how to regenerate it.
 Netlify, Cloudflare Pages). Vite is configured with `base: './'`, so the
 build works from any subpath. Required map attribution (© OpenStreetMap
 contributors, © CARTO) is shown both in the map corner and in the footer.
+
+### GitHub Pages (automatic)
+
+`.github/workflows/deploy.yml` builds and tests on every push to `main`
+and deploys `dist/` to GitHub Pages. To enable it once:
+
+1. In the repo settings → Pages, set **Source** to *GitHub Actions*.
+2. Push to `main` (or run the workflow manually via *Run workflow*).
+
+The game will be live at `https://<user>.github.io/<repo>/`.
