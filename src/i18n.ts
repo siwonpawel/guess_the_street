@@ -1,5 +1,14 @@
 // Wszystkie teksty widoczne dla użytkownika (język polski).
 
+/** Polski wariant liczebnika dla „ulica”: 1 ulica, 2–4 ulice, dalej ulic. */
+function pluralStreet(n: number): string {
+  if (n === 1) return 'ulica';
+  const r10 = n % 10;
+  const r100 = n % 100;
+  if (r10 >= 2 && r10 <= 4 && (r100 < 12 || r100 > 14)) return 'ulice';
+  return 'ulic';
+}
+
 export const STR = {
   docTitle: 'Zgadnij Ulicę',
   docDescription:
@@ -44,6 +53,10 @@ export const STR = {
   changeCity: 'Zmień miasto',
 
   confirmPin: 'Potwierdź zgadywanie na pinezkę',
+
+  debugArea: 'Pokaż granicę obszaru losowania (debug)',
+  areaStreets: (n: number) => `obszar: ${n} ${pluralStreet(n)}`,
+
 
   // formatDistance
   onStreet: 'na ulicy!',

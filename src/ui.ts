@@ -1,6 +1,6 @@
 // DOM overlay screens: CitySelect, Loading, Round HUD, Result panel, GameOver.
 
-import { ROUND_OPTIONS, ROUNDS_PER_GAME } from './config';
+import { DEBUG_SHOW_AREA_BORDER, ROUND_OPTIONS, ROUNDS_PER_GAME } from './config';
 import type { Game, GameState } from './game';
 import { formatDistance } from './geo';
 import { STR } from './i18n';
@@ -17,14 +17,26 @@ function escapeHtml(s: string): string {
   });
 }
 
+export interface UIOptions {
+  /** Initial state of the debug area-border checkbox (config default). */
+  debugAreaBorder?: boolean;
+  /** Called when the debug checkbox is toggled (live switch). */
+  onDebugAreaToggle?: (on: boolean) => void;
+}
+
 export class UI {
   private lastState: GameState | null = null;
   private hardcoreChoice = false;
+  private debugAreaBorder: boolean;
+  private readonly onDebugAreaToggle: ((on: boolean) => void) | null;
 
   constructor(
     private readonly root: HTMLElement,
     private readonly game: Game,
+    opts: UIOptions = {},
   ) {
+    this.debugAreaBorder = opts.debugAreaBorder ?? DEBUG_SHOW_AREA_BORDER;
+    this.onDebugAreaToggle = opts.onDebugAreaToggle ?? null;
     this.build();
     this.bind();
   }
@@ -50,6 +62,10 @@ export class UI {
             ${ROUND_OPTIONS.map((n) => `<button type="button" class="seg rounds-seg${n === ROUNDS_PER_GAME ? ' active' : ''}" data-rounds="${n}">${n}</button>`).join('')}
             <span class="seg-label">${STR.roundsLabel}</span>
           </div>
+          <label class="debug-toggle" for="debug-area">
+            <input type="checkbox" id="debug-area"${this.debugAreaBorder ? ' checked' : ''} />
+            <span>${STR.debugArea}</span>
+          </label>
           <div id="mock-badge" class="mock-badge hidden">${STR.mockBadge}</div>
           <div id="city-error" class="error hidden"></div>
           <div id="city-grid" class="city-grid"></div>
@@ -114,6 +130,11 @@ export class UI {
         this.game.setRoundsPerGame(Number(btn.dataset.rounds));
       });
     }
+    this.el<HTMLInputElement>('debug-area').addEventListener('change', (e) => {
+      const input = e.currentTarget as HTMLInputElement | null;
+      this.debugAreaBorder = input?.checked ?? false;
+      this.onDebugAreaToggle?.(this.debugAreaBorder);
+    });
     this.el('btn-next').addEventListener('click', () => this.game.next());
     this.el('btn-again').addEventListener('click', () => this.game.playAgain());
     this.el('btn-change').addEventListener('click', () => this.game.toCitySelect());

@@ -31,6 +31,17 @@ wszystkie segmenty OSM o tej samej nazwie traktowane są jako jedna ulica
 `FORCE_TARGET_STREETS` w `src/config.ts` ogranicza cele rund do podanych ulic
 (np. `['Santocka', '26 Kwietnia']`; `null` = losowe ulice z całego miasta).
 
+## Debug: granica obszaru losowania
+
+Flaga `DEBUG_SHOW_AREA_BORDER` w `src/config.ts` (oraz mały, dyskretny checkbox
+„Pokaż granicę obszaru losowania (debug)” na ekranie wyboru miasta, który można
+przełączać na żywo) rysuje na mapie przerywaną fioletową ramkę wokół bbox-u
+wybranego miasta — czyli obszaru, z którego losowane są ulice-cel rund — wraz z
+małą plakietką z liczbą ulic w obszarze (np. „obszar: 9857 ulic”). Ramka jest
+widoczna w rundzie, podczas odkrywania wyniku i na ekranie końca gry (w obu
+trybach trudności, nad warstwą ulic), znika po powrocie do wyboru miasta.
+Ustaw flagę na `false`, aby nic nie rysować.
+
 ## Tryby trudności
 
 - **Normalny** — klasyczne kafelki OpenStreetMap z nazwami ulic.

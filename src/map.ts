@@ -69,6 +69,9 @@ export class GameMap {
   private normalLayer: L.TileLayer | null = null;
   private streetLayer: L.LayerGroup | null = null;
   private revealGroup: L.LayerGroup | null = null;
+  private areaGroup: L.LayerGroup | null = null;
+  private areaRect: L.Rectangle | null = null;
+  private areaBBox: [number, number, number, number] | null = null;
   private pin: L.Marker | null = null;
   private confirmBtn: HTMLButtonElement | null = null;
   private touch = false;
@@ -99,6 +102,9 @@ export class GameMap {
       });
       this.normalLayer.addTo(this.map);
       this.revealGroup = L.layerGroup().addTo(this.map);
+      // Debug overlay (area border) lives in its own group, added last so it
+      // renders above tiles and the hardcore street layer.
+      this.areaGroup = L.layerGroup().addTo(this.map);
 
       this.touch =
         (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) ||
@@ -171,7 +177,10 @@ export class GameMap {
       }
     }
     this.streetLayer = group;
-    if (this.hardcore) group.addTo(this.map);
+    if (this.hardcore) {
+      group.addTo(this.map);
+      this.bringAreaToFront();
+    }
   }
 
   /**
@@ -191,6 +200,61 @@ export class GameMap {
       this.streetLayer?.removeFrom(this.map);
       this.normalLayer.addTo(this.map);
     }
+    this.bringAreaToFront();
+  }
+
+  /** Keep the debug area border above the street layer / tiles. */
+  private bringAreaToFront(): void {
+    if (!this.map || !this.areaGroup) return;
+    this.areaGroup.removeFrom(this.map);
+    this.areaGroup.addTo(this.map);
+    // Re-adding re-creates the SVG path, so re-stamp the debug bbox attribute.
+    if (this.areaRect && this.areaBBox) {
+      this.areaRect.getElement()?.setAttribute('data-area-bbox', this.areaBBox.join(','));
+    }
+  }
+
+  /**
+   * Debug overlay: draw the area marking — the city bbox the round targets
+   * are randomly picked from — as a dashed violet rectangle with a small
+   * street-count label in its NW corner. Pass `null` to remove it. The
+   * border lives in its own layer group, so `clearRound()` (round reveals)
+   * never touches it and it persists across rounds within a game.
+   */
+  setAreaBorder(bbox: [number, number, number, number] | null, streetCount?: number): void {
+    if (!this.map || !this.areaGroup) return;
+    this.areaGroup.clearLayers();
+    this.areaRect = null;
+    this.areaBBox = null;
+    if (!bbox) return;
+    const [w, s, e, n] = bbox;
+    this.areaBBox = bbox;
+    this.areaRect = L.rectangle(L.latLngBounds([[s, w], [n, e]]), {
+      color: '#7c3aed',
+      weight: 2,
+      dashArray: '8 6',
+      fillColor: '#7c3aed',
+      fillOpacity: 0.04,
+      interactive: false,
+      className: 'gts-area-border',
+    }).addTo(this.areaGroup);
+    if (streetCount !== undefined) {
+      L.marker([n, w], {
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({
+          className: 'gts-area-border-label',
+          html: STR.areaStreets(streetCount),
+          iconSize: [0, 0],
+        }),
+      }).addTo(this.areaGroup);
+    }
+    this.bringAreaToFront();
+  }
+
+  /** Debug: bounds of the currently drawn area border (`null` when hidden). */
+  getAreaBorderBounds(): L.LatLngBounds | null {
+    return this.areaRect?.getBounds() ?? null;
   }
 
   /**

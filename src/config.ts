@@ -33,6 +33,14 @@ export const VISIBLE_CITY_SLUGS: string[] | null = ['szczecin'];
  */
 export const FORCE_TARGET_STREETS: string[] | null = null;
 
+/**
+ * Debug overlay: when true, the border of the area the target streets are
+ * randomly picked from (the selected city's bbox) is drawn on the map as a
+ * dashed rectangle while a game is running. Can also be toggled live with
+ * the small checkbox on the city-select screen.
+ */
+export const DEBUG_SHOW_AREA_BORDER = true;
+
 // Basemap tiles — standard OpenStreetMap raster tiles (a street map; no
 // satellite/aerial imagery anywhere). Keyless and fine for low-traffic use
 // under the OSM tile usage policy. (CARTO Positron basemaps now require an

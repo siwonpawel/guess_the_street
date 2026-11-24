@@ -228,6 +228,43 @@ h2 {
   font-size: 14px;
 }
 
+/* ---------- debug toggle (city select) ---------- */
+
+.debug-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 10px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.debug-toggle input {
+  margin: 0;
+  accent-color: #7c3aed;
+}
+
+/* ---------- debug overlay: area border on the map ---------- */
+
+/* Dashed violet rectangle drawn by Leaflet (GameMap.setAreaBorder). */
+.gts-area-border {
+  stroke: #7c3aed;
+}
+
+.gts-area-border-label {
+  margin: 5px 0 0 7px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #5b21b6;
+  background: rgba(237, 233, 254, 0.92);
+  border: 1px solid #7c3aed;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 /* ---------- loading ---------- */
 
 .loading-box {

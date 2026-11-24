@@ -3,8 +3,8 @@
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 
-import { ATTRIBUTION_OSM } from './config';
-import { Game } from './game';
+import { ATTRIBUTION_OSM, DEBUG_SHOW_AREA_BORDER } from './config';
+import { Game, type GameState } from './game';
 import { GameMap } from './map';
 import { UI } from './ui';
 
@@ -19,7 +19,27 @@ footer.innerHTML = ATTRIBUTION_OSM;
 
 const game = new Game();
 const map = new GameMap(mapEl, (ll) => game.submitGuess(ll));
-const ui = new UI(uiEl, game);
+
+// Debug overlay: draw the area border (city bbox) while a game is running.
+// Initial value comes from the config flag; the city-select checkbox can
+// switch it live.
+let debugAreaBorder = DEBUG_SHOW_AREA_BORDER;
+
+function applyAreaBorder(s: GameState): void {
+  if (debugAreaBorder && s.city && s.screen !== 'cityselect' && s.screen !== 'loading') {
+    map.setAreaBorder(s.city.bbox, s.city.streetCount);
+  } else {
+    map.setAreaBorder(null);
+  }
+}
+
+const ui = new UI(uiEl, game, {
+  debugAreaBorder,
+  onDebugAreaToggle: (on) => {
+    debugAreaBorder = on;
+    applyAreaBorder(game.getState());
+  },
+});
 
 // Keep the map in sync with game state.
 let mapCitySlug: string | null = null;
@@ -27,6 +47,7 @@ let mapHardcore: boolean | null = null;
 let revealedRound = -1;
 game.subscribe((s) => {
   ui.render(s);
+  applyAreaBorder(s);
   if (!s.city || s.screen === 'cityselect') return;
   // (Re)fit the map when the city changes or a new game starts — also when the
   // same city is replayed, so the view resets from the last reveal zoom.
@@ -48,5 +69,10 @@ game.subscribe((s) => {
     map.clearRound();
   }
 });
+
+// Debug handle for devtools/tests, only when the area-border overlay is on.
+if (DEBUG_SHOW_AREA_BORDER) {
+  (window as unknown as { __gts?: { map: GameMap } }).__gts = { map };
+}
 
 void game.init();
