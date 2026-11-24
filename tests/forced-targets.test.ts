@@ -130,3 +130,104 @@ describe('real Szczecin data: Santocka / 26 Kwietnia', () => {
     expect(rec.distanceM).toBeGreaterThan(50); // the two streets are distinct
   });
 });
+
+describe('360 matches around Santocka / 26 Kwietnia', () => {
+  const R_METERS = 50; // ring radius around each street's centroid
+  const M_PER_DEG_LAT = 111320;
+
+  function streetCentroid(name: string): LatLng {
+    const pts = byName(name).flatMap(polylinesOfFeature).flat();
+    let lon = 0;
+    let lat = 0;
+    for (const [lo, la] of pts) {
+      lon += lo;
+      lat += la;
+    }
+    return { lat: lat / pts.length, lon: lon / pts.length };
+  }
+
+  /** Point at `bearingDeg` (0 = north, clockwise) and `R_METERS` from the centroid. */
+  function ringPoint(center: LatLng, bearingDeg: number): LatLng {
+    const rad = (bearingDeg * Math.PI) / 180;
+    const mPerDegLon = M_PER_DEG_LAT * Math.cos((center.lat * Math.PI) / 180);
+    return {
+      lat: center.lat + (R_METERS * Math.sin(rad)) / M_PER_DEG_LAT,
+      lon: center.lon + (R_METERS * Math.cos(rad)) / mPerDegLon,
+    };
+  }
+
+  function groupMinDistance(name: string, p: LatLng): number {
+    return Math.min(
+      ...byName(name).flatMap((f) => polylinesOfFeature(f)).map((c) => pointToPolylineMeters(p, c)),
+    );
+  }
+
+  it('360 bearings per street: distance = min over ALL same-named segments, within sane bounds', () => {
+    for (const name of FORCED) {
+      const center = streetCentroid(name);
+      const group = byName(name).flatMap((f) => polylinesOfFeature(f));
+      // street radius: farthest vertex from the centroid
+      let streetRadius = 0;
+      for (const line of group) {
+        for (const [lon, lat] of line) {
+          streetRadius = Math.max(streetRadius, pointToPolylineMeters({ lat, lon }, [[center.lon, center.lat]]));
+        }
+      }
+      let minD = Infinity;
+      let maxD = 0;
+      for (let deg = 0; deg < 360; deg++) {
+        const p = ringPoint(center, deg);
+        const d = groupMinDistance(name, p);
+        expect(Number.isFinite(d)).toBe(true);
+        expect(d).toBeGreaterThanOrEqual(0);
+        // a ring point can be at most R + streetRadius away from the street
+        expect(d).toBeLessThanOrEqual(R_METERS + streetRadius + 1e-6);
+        minD = Math.min(minD, d);
+        maxD = Math.max(maxD, d);
+      }
+      // the street passes near its centroid, so some bearing gets close to it
+      expect(minD).toBeLessThan(R_METERS + 5);
+      console.log(`${name}: 360 bearings, min=${minD.toFixed(1)} m, max=${maxD.toFixed(1)} m (R=${R_METERS} m, streetRadius=${streetRadius.toFixed(0)} m)`);
+    }
+  });
+
+  it('10 game guesses per street: recorded distance matches the whole-group minimum', async () => {
+    const perStreet = new Map<string, number>();
+    const done = () => FORCED.every((n) => (perStreet.get(n) ?? 0) >= 10);
+    for (let seed = 1; seed <= 60 && !done(); seed++) {
+      __resetDataCaches();
+      const game = new Game({ rng: mulberry32(seed), storage: new FakeStorage(), features: FEATURES });
+      await game.init();
+      await game.selectCity(MOCK_CITY.slug, false);
+      // up to 10 guesses in this game; the target may switch streets between rounds
+      for (let i = 0; i < 10; i++) {
+        const s0 = game.getState();
+        if (s0.screen !== 'round') break;
+        const targetName = s0.targetName!;
+        if ((perStreet.get(targetName) ?? 0) >= 10) {
+          // already have 10 guesses for this street — advance without guessing
+          if (s0.roundIndex + 1 < ROUNDS_PER_GAME) game.next();
+          else break;
+          continue;
+        }
+        const center = streetCentroid(targetName);
+        const groupSize = byName(targetName).flatMap(polylinesOfFeature).length;
+        // bearings spread over the full circle
+        const guess = ringPoint(center, (i * 36 + seed * 7) % 360);
+        game.submitGuess(guess);
+        const s = game.getState();
+        const rec = s.rounds[s.rounds.length - 1];
+        expect(rec.targetName).toBe(targetName);
+        const expected = groupMinDistance(targetName, guess);
+        expect(rec.distanceM).toBeCloseTo(expected, 6);
+        expect(s.reveal!.polylines.length).toBe(groupSize);
+        perStreet.set(targetName, (perStreet.get(targetName) ?? 0) + 1);
+        if (s.roundIndex + 1 < ROUNDS_PER_GAME) game.next();
+        else break;
+      }
+    }
+    expect(perStreet.get('Santocka')).toBe(10);
+    expect(perStreet.get('26 Kwietnia')).toBe(10);
+    console.log('game guesses per street:', Object.fromEntries(perStreet));
+  });
+});
