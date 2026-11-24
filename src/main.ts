@@ -27,7 +27,7 @@ let debugAreaBorder = DEBUG_SHOW_AREA_BORDER;
 
 function applyAreaBorder(s: GameState): void {
   if (debugAreaBorder && s.city && s.screen !== 'cityselect' && s.screen !== 'loading') {
-    map.setAreaBorder(s.city.bbox, s.city.streetCount);
+    map.setAreaBorder(s.city.bbox, s.city.streetCount, s.boundary);
   } else {
     map.setAreaBorder(null);
   }

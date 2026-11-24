@@ -2,7 +2,7 @@
 // plus random target-street picking. Falls back to the embedded mock city
 // when the generated data files are not available.
 
-import type { Feature, LineString, MultiLineString } from 'geojson';
+import type { Feature, LineString, MultiLineString, MultiPolygon, Polygon } from 'geojson';
 import { DATA_BASE, VISIBLE_CITY_SLUGS } from './config';
 import { MOCK_CITY, MOCK_STREET_FEATURES } from './mock-data';
 
@@ -36,6 +36,8 @@ export interface CityData {
   city: CityInfo;
   features: StreetFeature[];
   usingMock: boolean;
+  /** Administrative boundary polygon (`<slug>-boundary.geojson`), if generated. */
+  boundary?: Polygon | MultiPolygon;
 }
 
 /** Polylines of a street feature as arrays of [lon, lat] tuples. */
@@ -95,7 +97,19 @@ export async function loadCity(slug: string): Promise<CityData> {
   const features = gj.features ?? [];
   if (features.length === 0) throw new Error(`${slug}.geojson: no features`);
   const city = cities.find((c) => c.slug === slug) ?? infoFromFeatures(slug, features);
-  const data: CityData = { city, features, usingMock: false };
+  // Optional administrative boundary polygon (used to draw the selection area).
+  let boundary: Polygon | MultiPolygon | undefined;
+  try {
+    const bres = await fetch(`${DATA_BASE}${slug}-boundary.geojson`);
+    if (bres.ok) {
+      const bgj = (await bres.json()) as { features?: { geometry?: Polygon | MultiPolygon }[] };
+      const g = bgj.features?.[0]?.geometry;
+      if (g && (g.type === 'Polygon' || g.type === 'MultiPolygon')) boundary = g;
+    }
+  } catch {
+    // boundary file is optional
+  }
+  const data: CityData = { city, features, usingMock: false, boundary };
   cityCache.set(slug, data);
   return data;
 }

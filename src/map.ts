@@ -2,6 +2,7 @@
 // hardcore: the baked OSM street geometry rendered without labels),
 // click-to-guess (with a confirm pin on touch devices), and the round reveal.
 
+import type { MultiPolygon, Polygon } from 'geojson';
 import L from 'leaflet';
 import {
   ATTRIBUTION_OSM,
@@ -215,13 +216,19 @@ export class GameMap {
   }
 
   /**
-   * Debug overlay: draw the area marking — the city bbox the round targets
-   * are randomly picked from — as a dashed violet rectangle with a small
-   * street-count label in its NW corner. Pass `null` to remove it. The
-   * border lives in its own layer group, so `clearRound()` (round reveals)
-   * never touches it and it persists across rounds within a game.
+   * Debug overlay: draw the area marking — the area the round targets are
+   * randomly picked from — as a dashed violet shape with a small street-count
+   * label in its NW corner. If the administrative `boundary` polygon is given,
+   * the real city boundary is drawn; otherwise the city bbox rectangle is used.
+   * Pass `null` bbox to remove it. The border lives in its own layer group, so
+   * `clearRound()` (round reveals) never touches it and it persists across
+   * rounds within a game.
    */
-  setAreaBorder(bbox: [number, number, number, number] | null, streetCount?: number): void {
+  setAreaBorder(
+    bbox: [number, number, number, number] | null,
+    streetCount?: number,
+    boundary?: Polygon | MultiPolygon | null,
+  ): void {
     if (!this.map || !this.areaGroup) return;
     this.areaGroup.clearLayers();
     this.areaRect = null;
@@ -229,7 +236,7 @@ export class GameMap {
     if (!bbox) return;
     const [w, s, e, n] = bbox;
     this.areaBBox = bbox;
-    this.areaRect = L.rectangle(L.latLngBounds([[s, w], [n, e]]), {
+    const style: L.PathOptions = {
       color: '#7c3aed',
       weight: 2,
       dashArray: '8 6',
@@ -237,7 +244,18 @@ export class GameMap {
       fillOpacity: 0.04,
       interactive: false,
       className: 'gts-area-border',
-    }).addTo(this.areaGroup);
+    };
+    if (boundary) {
+      const polys = (boundary.type === 'Polygon' ? [boundary.coordinates] : boundary.coordinates) as unknown as [number, number][][][];
+      for (const poly of polys) {
+        const rings = poly.map((ring) =>
+          ring.map((pt) => [pt[1], pt[0]] as [number, number]),
+        );
+        this.areaRect = L.polygon(rings, style).addTo(this.areaGroup) as unknown as L.Rectangle;
+      }
+    } else {
+      this.areaRect = L.rectangle(L.latLngBounds([[s, w], [n, e]]), style).addTo(this.areaGroup);
+    }
     if (streetCount !== undefined) {
       L.marker([n, w], {
         interactive: false,

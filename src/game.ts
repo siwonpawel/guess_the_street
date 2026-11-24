@@ -1,6 +1,7 @@
 // Game state machine: CitySelect → Loading → Round → Result → (next Round | GameOver).
 // Pure logic (no DOM) — driven by main.ts/ui.ts and unit-tested in tests/game.test.ts.
 
+import type { MultiPolygon, Polygon } from 'geojson';
 import { BEST_SCORE_KEY, FORCE_TARGET_STREETS, ROUNDS_PER_GAME, scoreForDistance } from './config';
 import { STR } from './i18n';
 import {
@@ -49,6 +50,8 @@ export interface GameState {
   targetName: string | null;
   /** D = half the city bbox diagonal; the scoring scale. */
   scaleM: number;
+  /** Administrative boundary of the selection area (if available). */
+  boundary: Polygon | MultiPolygon | null;
   reveal: Reveal | null;
   error: string | null;
 }
@@ -97,6 +100,7 @@ export class Game {
       newBest: false,
       targetName: null,
       scaleM: 0,
+      boundary: null,
       reveal: null,
       error: null,
     };
@@ -139,6 +143,7 @@ export class Game {
     this.set({
       city: data.city,
       usingMock: this.state.usingMock || data.usingMock,
+      boundary: data.boundary ?? null,
       rounds: [],
       totalScore: 0,
       roundIndex: 0,
