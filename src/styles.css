@@ -326,6 +326,13 @@ h2 {
   text-overflow: ellipsis;
 }
 
+.hud-btn {
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
 .hud-find {
   color: #fda4af;
 }

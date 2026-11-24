@@ -158,6 +158,28 @@ describe('Game state machine (mock-data fallback)', () => {
     expect(game.getState().roundsPerGame).toBe(1);
   });
 
+  it('seeded games are reproducible (shareable ?seed= links)', async () => {
+    const run = async (seed: string): Promise<string[]> => {
+      __resetDataCaches();
+      const g = new Game({ seed, storage: new FakeStorage() });
+      await g.init();
+      await g.selectCity(MOCK_CITY.slug, false);
+      expect(g.getState().gameSeed).toBe(seed);
+      const names: string[] = [];
+      for (let i = 0; i < ROUNDS_PER_GAME; i++) {
+        names.push(g.getState().targetName!);
+        g.submitGuess({ lat: 50.0605, lon: 19.9425 });
+        g.next();
+      }
+      return names;
+    };
+    const a1 = await run(' moja-gra-1');
+    const a2 = await run(' moja-gra-1');
+    const b = await run('inna-gra-2');
+    expect(a1).toEqual(a2); // same seed → same streets in the same order
+    expect(a1).not.toEqual(b); // different seed → different game
+  });
+
   it('ignores guesses submitted outside the round screen', async () => {
     __resetDataCaches();
     const game = new Game({ rng: mulberry32(7), storage: new FakeStorage() });

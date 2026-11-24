@@ -103,6 +103,7 @@ export class UI {
           <span id="hud-round" class="hud-chip"></span>
           <span id="hud-find" class="hud-chip hud-find"></span>
           <span id="hud-score" class="hud-chip"></span>
+          <button type="button" id="btn-share" class="hud-chip hud-btn hidden" title="${STR.shareLink}">🔗</button>
         </div>
         <div id="hud-hint" class="hud-hint">${STR.hint}</div>
       </div>
@@ -134,6 +135,20 @@ export class UI {
       const input = e.currentTarget as HTMLInputElement | null;
       this.debugAreaBorder = input?.checked ?? false;
       this.onDebugAreaToggle?.(this.debugAreaBorder);
+    });
+    this.el('btn-share').addEventListener('click', async (ev) => {
+      const s = this.game.getState();
+      if (!s.gameSeed) return;
+      const p = new URLSearchParams({ seed: s.gameSeed, rounds: String(s.roundsPerGame) });
+      const url = `${window.location.origin}${window.location.pathname}?${p.toString()}`;
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        window.prompt(STR.shareLink, url);
+      }
+      const btn = ev.currentTarget as HTMLButtonElement;
+      btn.textContent = '✓';
+      window.setTimeout(() => (btn.textContent = '🔗'), 1200);
     });
     this.el('btn-next').addEventListener('click', () => this.game.next());
     this.el('btn-again').addEventListener('click', () => this.game.playAgain());
@@ -174,6 +189,7 @@ export class UI {
       );
       this.el('hud-find').textContent = STR.find(s.targetName ?? '—');
       this.el('hud-score').textContent = STR.score(s.totalScore);
+      this.el('btn-share').classList.toggle('hidden', !s.gameSeed);
       this.el('hud-hint').textContent = s.screen === 'round' ? STR.hint : '';
     }
 

@@ -361,7 +361,7 @@ function buildFeatureCollection(data, toleranceM) {
     const simple = simplifyWay(el.geometry, toleranceM);
     features.push({
       type: 'Feature',
-      properties: { name, highway },
+      properties: { name, highway, id: el.id },
       geometry: {
         type: 'LineString',
         coordinates: simple.map((p) => [quantize(p.lon), quantize(p.lat)]),

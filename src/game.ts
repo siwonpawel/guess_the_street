@@ -4,6 +4,7 @@
 import type { MultiPolygon, Polygon } from 'geojson';
 import { BEST_SCORE_KEY, FORCE_TARGET_STREETS, ROUNDS_PER_GAME, scoreForDistance } from './config';
 import { STR } from './i18n';
+import { hashSeed, mulberry32, randomSeed } from './rng';
 import {
   loadCities,
   loadCity,
@@ -52,6 +53,8 @@ export interface GameState {
   scaleM: number;
   /** Administrative boundary of the selection area (if available). */
   boundary: Polygon | MultiPolygon | null;
+  /** Seed of the current game (`?seed=` in the shareable link), if seeded. */
+  gameSeed: string | null;
   reveal: Reveal | null;
   error: string | null;
 }
@@ -60,6 +63,8 @@ export type Listener = (state: GameState) => void;
 
 export interface GameOptions {
   rng?: () => number;
+  /** Fixed seed from the shareable link (`?seed=`); null/undefined = fresh random seed per game. */
+  seed?: string | null;
   storage?: Pick<Storage, 'getItem' | 'setItem'> | null;
   /** Test hook: override the loaded city's street features. */
   features?: StreetFeature[];
@@ -78,12 +83,17 @@ export class Game {
   private listeners = new Set<Listener>();
   private features: StreetFeature[] = [];
   private targets: StreetFeature[] = [];
-  private readonly rng: () => number;
+  private rng: () => number;
+  private readonly optsRng: (() => number) | null;
+  private readonly fixedSeed: string | null;
+  private gameSeed: string | null = null;
   private readonly storage: Pick<Storage, 'getItem' | 'setItem'> | null;
   private readonly forcedFeatures: StreetFeature[] | null;
 
   constructor(opts: GameOptions = {}) {
+    this.optsRng = opts.rng ?? null;
     this.rng = opts.rng ?? Math.random;
+    this.fixedSeed = opts.seed ?? null;
     this.storage = opts.storage === undefined ? defaultStorage() : opts.storage;
     this.forcedFeatures = opts.features ?? null;
     this.state = {
@@ -101,6 +111,7 @@ export class Game {
       targetName: null,
       scaleM: 0,
       boundary: null,
+      gameSeed: null,
       reveal: null,
       error: null,
     };
@@ -138,12 +149,14 @@ export class Game {
       return;
     }
     this.features = this.forcedFeatures ?? data.features;
+    this.applySeed();
     this.targets = this.pickTargets();
     const scaleM = bboxDiagonalMeters(data.city.bbox) / 2;
     this.set({
       city: data.city,
       usingMock: this.state.usingMock || data.usingMock,
       boundary: data.boundary ?? null,
+      gameSeed: this.gameSeed,
       rounds: [],
       totalScore: 0,
       roundIndex: 0,
@@ -217,17 +230,30 @@ export class Game {
     }
   }
 
+  /**
+   * Fix the RNG for the upcoming game: reuse the shareable-link seed if one was
+   * given (`?seed=`), otherwise roll a fresh random seed. No-op when a test
+   * injected `rng` directly.
+   */
+  private applySeed(): void {
+    if (this.optsRng) return;
+    this.gameSeed = this.fixedSeed ?? randomSeed();
+    this.rng = mulberry32(hashSeed(this.gameSeed));
+  }
+
   /** Play again with the same city (new random targets). */
   playAgain(): void {
     if (this.features.length === 0) {
       this.set({ screen: 'cityselect', reveal: null });
       return;
     }
+    this.applySeed();
     this.targets = this.pickTargets();
     this.set({
       rounds: [],
       totalScore: 0,
       roundIndex: 0,
+      gameSeed: this.gameSeed,
       targetName: this.targets[0]?.properties.name ?? null,
       screen: 'round',
       reveal: null,

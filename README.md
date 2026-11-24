@@ -25,6 +25,15 @@ Na ekranie wyboru miasta pokazuje się tylko **Szczecin** — sterowane przez
 `VISIBLE_CITY_SLUGS` w `src/config.ts` (ustaw `null`, aby pokazać wszystkie
 miasta z indeksu danych). Pliki danych pozostałych miast zostają w repo.
 
+## Udostępnianie gier (linki z seedem)
+
+Każda gra ma seed (`?seed=...&rounds=N` w URL). Ten sam seed + te same dane =
+identyczne ulice-cel w każdej rundzie, więc link do gry można komuś wysłać:
+przycisk 🔗 w HUD kopiuje aktualny link. Ulice w danych mają też ID waysów
+OSM (`properties.id`). Bez parametru `seed` każda gra losuje nowy seed.
+
+## Odległość „pudła”
+
 Odległość „pudła” liczona jest zawsze do **najbliższego punktu na całej ulicy**:
 wszystkie segmenty OSM o tej samej nazwie traktowane są jako jedna ulica
 (OSM często dzieli ulicę na wiele części). Do testów ręcznych:

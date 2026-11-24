@@ -31,6 +31,8 @@ export const STR = {
   loadingCity: (name: string) => `Ładowanie danych ulic: ${name}…`,
 
   round: (i: number, n: number) => `Runda ${i}/${n}`,
+  shareLink: 'Kopiuj link do tej gry (ten sam seed = te same ulice)',
+  linkCopied: 'Link skopiowany!',
   find: (name: string) => `Znajdź: ${name}`,
   score: (s: number) => `Wynik: ${s}`,
   hint: 'Kliknij mapę, aby zgadnąć',

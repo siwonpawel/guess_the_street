@@ -17,7 +17,13 @@ if (!app || !mapEl || !uiEl || !footer) throw new Error('missing #app/#map/#ui/#
 // Required attribution in the footer as well as the map corner (ODbL).
 footer.innerHTML = ATTRIBUTION_OSM;
 
-const game = new Game();
+// Shareable games: `?seed=...&rounds=N` in the URL fully determines the target
+// streets; without a seed each new game rolls a fresh one and the URL is updated.
+const urlParams = new URLSearchParams(window.location.search);
+const urlSeed = urlParams.get('seed');
+const urlRounds = Number.parseInt(urlParams.get('rounds') ?? '', 10);
+const game = new Game({ seed: urlSeed });
+if (Number.isFinite(urlRounds) && urlRounds > 0) game.setRoundsPerGame(urlRounds);
 const map = new GameMap(mapEl, (ll) => game.submitGuess(ll));
 
 // Debug overlay: draw the area border (city bbox) while a game is running.
@@ -52,6 +58,11 @@ game.subscribe((s) => {
   // (Re)fit the map when the city changes or a new game starts — also when the
   // same city is replayed, so the view resets from the last reveal zoom.
   const newGame = s.screen === 'round' && s.roundIndex === 0 && s.rounds.length === 0;
+  if (newGame && s.gameSeed) {
+    // Reflect the current game in the URL so it can be shared/reloaded.
+    const p = new URLSearchParams({ seed: s.gameSeed, rounds: String(s.roundsPerGame) });
+    window.history.replaceState(null, '', `${window.location.pathname}?${p.toString()}`);
+  }
   if (mapCitySlug !== s.city.slug || newGame) {
     map.init(s.city); // idempotent; fits bounds to the city
     map.setStreets(game.getFeatures()); // hardcore layer source

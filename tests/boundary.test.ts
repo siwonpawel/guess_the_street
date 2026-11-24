@@ -19,7 +19,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 type LonLat = [number, number];
 interface StreetFeature {
   type: 'Feature';
-  properties: { name: string; highway: string };
+  properties: { name: string; highway: string; id?: number };
   geometry: { type: 'LineString'; coordinates: LonLat[] };
 }
 interface BoundaryFile {
@@ -84,6 +84,13 @@ function pointInBoundary(lon: number, lat: number): boolean {
 }
 
 describe('szczecin boundary data', () => {
+  it('every street feature carries its OSM way id (for shareable games)', () => {
+    for (const f of streets.features) {
+      expect(typeof f.properties.id).toBe('number');
+      expect(f.properties.id).toBeGreaterThan(0);
+    }
+  });
+
   it('boundary file is a valid FeatureCollection with one Polygon/MultiPolygon feature', () => {
     expect(boundary.type).toBe('FeatureCollection');
     expect(boundary.features).toHaveLength(1);
