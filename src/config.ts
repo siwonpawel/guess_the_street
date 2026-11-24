@@ -22,6 +22,12 @@ export const BEST_SCORE_KEY = 'gts.best';
  */
 export const VISIBLE_CITY_SLUGS: string[] | null = ['szczecin'];
 
+/**
+ * Debug override: when set, every round targets this street name (all OSM
+ * segments with this name count as one street). `null` = random street.
+ */
+export const FORCE_TARGET_STREET: string | null = 'Dworcowa';
+
 // Basemap tiles — standard OpenStreetMap raster tiles (a street map; no
 // satellite/aerial imagery anywhere). Keyless and fine for low-traffic use
 // under the OSM tile usage policy. (CARTO Positron basemaps now require an

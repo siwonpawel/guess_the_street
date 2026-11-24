@@ -1,7 +1,7 @@
 // Game state machine: CitySelect → Loading → Round → Result → (next Round | GameOver).
 // Pure logic (no DOM) — driven by main.ts/ui.ts and unit-tested in tests/game.test.ts.
 
-import { BEST_SCORE_KEY, ROUNDS_PER_GAME, scoreForDistance } from './config';
+import { BEST_SCORE_KEY, FORCE_TARGET_STREET, ROUNDS_PER_GAME, scoreForDistance } from './config';
 import { STR } from './i18n';
 import {
   loadCities,
@@ -128,7 +128,7 @@ export class Game {
       return;
     }
     this.features = data.features;
-    this.targets = pickTargetStreets(this.features, ROUNDS_PER_GAME, this.rng);
+    this.targets = this.pickTargets();
     const scaleM = bboxDiagonalMeters(data.city.bbox) / 2;
     this.set({
       city: data.city,
@@ -151,11 +151,13 @@ export class Game {
     if (!target) return;
     let distanceM = Infinity;
     let nearest: LatLng = guess;
-    for (const coords of polylinesOfFeature(target)) {
-      const np = nearestPointOnPolyline(guess, coords);
-      if (np.distanceMeters < distanceM) {
-        distanceM = np.distanceMeters;
-        nearest = np.point;
+    for (const f of this.targetGroup(target)) {
+      for (const coords of polylinesOfFeature(f)) {
+        const np = nearestPointOnPolyline(guess, coords);
+        if (np.distanceMeters < distanceM) {
+          distanceM = np.distanceMeters;
+          nearest = np.point;
+        }
       }
     }
     const points = scoreForDistance(distanceM, this.state.scaleM);
@@ -172,7 +174,7 @@ export class Game {
       screen: 'result',
       reveal: {
         targetName: record.targetName,
-        polylines: polylinesOfFeature(target),
+        polylines: this.targetGroup(target).flatMap(polylinesOfFeature),
         guess,
         nearest,
       },
@@ -204,7 +206,7 @@ export class Game {
       this.set({ screen: 'cityselect', reveal: null });
       return;
     }
-    this.targets = pickTargetStreets(this.features, ROUNDS_PER_GAME, this.rng);
+    this.targets = this.pickTargets();
     this.set({
       rounds: [],
       totalScore: 0,
@@ -219,6 +221,27 @@ export class Game {
   /** Back to the city select screen. */
   toCitySelect(): void {
     this.set({ screen: 'cityselect', reveal: null, error: null });
+  }
+
+  /**
+   * Debug override: when FORCE_TARGET_STREET is set, every round targets that
+   * street (falls back to random if the name is not in the city data).
+   */
+  private pickTargets(): StreetFeature[] {
+    const forced = FORCE_TARGET_STREET;
+    const pool = forced ? this.features.filter((f) => f.properties.name === forced) : this.features;
+    return pickTargetStreets(pool.length > 0 ? pool : this.features, ROUNDS_PER_GAME, this.rng);
+  }
+
+  /**
+   * All OSM segments belonging to the target street. With FORCE_TARGET_STREET
+   * set, same-named segments are grouped into one street; otherwise the target
+   * feature alone is used.
+   */
+  private targetGroup(target: StreetFeature): StreetFeature[] {
+    if (!FORCE_TARGET_STREET) return [target];
+    const group = this.features.filter((f) => f.properties.name === target.properties.name);
+    return group.length > 0 ? group : [target];
   }
 
   private set(patch: Partial<GameState>): void {
