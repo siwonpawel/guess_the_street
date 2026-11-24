@@ -1,6 +1,6 @@
 // DOM overlay screens: CitySelect, Loading, Round HUD, Result panel, GameOver.
 
-import { ROUNDS_PER_GAME } from './config';
+import { ROUND_OPTIONS, ROUNDS_PER_GAME } from './config';
 import type { Game, GameState } from './game';
 import { formatDistance } from './geo';
 import { STR } from './i18n';
@@ -45,6 +45,10 @@ export class UI {
           <div class="difficulty" role="group" aria-label="${STR.difficultyLabel}">
             <button type="button" id="diff-normal" class="seg active">${STR.diffNormal}</button>
             <button type="button" id="diff-hardcore" class="seg">${STR.diffHardcore}</button>
+          </div>
+          <div class="difficulty" role="group" aria-label="${STR.roundsLabel}">
+            ${ROUND_OPTIONS.map((n) => `<button type="button" class="seg rounds-seg${n === ROUNDS_PER_GAME ? ' active' : ''}" data-rounds="${n}">${n}</button>`).join('')}
+            <span class="seg-label">${STR.roundsLabel}</span>
           </div>
           <div id="mock-badge" class="mock-badge hidden">${STR.mockBadge}</div>
           <div id="city-error" class="error hidden"></div>
@@ -102,6 +106,14 @@ export class UI {
     });
     this.el('diff-normal').addEventListener('click', () => this.setDifficulty(false));
     this.el('diff-hardcore').addEventListener('click', () => this.setDifficulty(true));
+    for (const btn of Array.from(this.root.querySelectorAll<HTMLButtonElement>('.rounds-seg'))) {
+      btn.addEventListener('click', () => {
+        for (const b of Array.from(this.root.querySelectorAll('.rounds-seg'))) {
+          b.classList.toggle('active', b === btn);
+        }
+        this.game.setRoundsPerGame(Number(btn.dataset.rounds));
+      });
+    }
     this.el('btn-next').addEventListener('click', () => this.game.next());
     this.el('btn-again').addEventListener('click', () => this.game.playAgain());
     this.el('btn-change').addEventListener('click', () => this.game.toCitySelect());
@@ -136,8 +148,8 @@ export class UI {
 
     if (inGame) {
       this.el('hud-round').textContent = STR.round(
-        Math.min(s.roundIndex + 1, ROUNDS_PER_GAME),
-        ROUNDS_PER_GAME,
+        Math.min(s.roundIndex + 1, s.roundsPerGame),
+        s.roundsPerGame,
       );
       this.el('hud-find').textContent = STR.find(s.targetName ?? '—');
       this.el('hud-score').textContent = STR.score(s.totalScore);
@@ -150,7 +162,7 @@ export class UI {
       this.el('res-dist').textContent = formatDistance(r.distanceM);
       this.el('res-points').textContent = STR.points(r.points);
       this.el('res-total').textContent = STR.total(s.totalScore);
-      const last = s.roundIndex + 1 >= ROUNDS_PER_GAME;
+      const last = s.roundIndex + 1 >= s.roundsPerGame;
       this.el<HTMLButtonElement>('btn-next').textContent = last ? STR.seeResults : STR.nextRound;
     }
 

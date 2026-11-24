@@ -1,7 +1,10 @@
 // All tunables for Guess the Street live in this one file.
 
-/** Rounds (distinct target streets) per game. */
+/** Default rounds (target streets) per game — changeable in the UI. */
 export const ROUNDS_PER_GAME = 5;
+
+/** Choices offered in the city-select screen for rounds per game. */
+export const ROUND_OPTIONS = [3, 5, 10, 20];
 
 /** A guess within this many meters of the target street is a bullseye (1000 pts). */
 export const BULLSEYE_METERS = 25;

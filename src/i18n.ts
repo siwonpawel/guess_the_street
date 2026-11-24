@@ -12,6 +12,7 @@ export const STR = {
   difficultyLabel: 'Poziom trudności',
   diffNormal: 'Normalny (z nazwami)',
   diffHardcore: 'Hardcore (bez nazw)',
+  roundsLabel: 'Liczba rund',
   mockBadge: 'dane demo — nie znaleziono wygenerowanych plików miast',
   cityError: (slug: string) => `Nie udało się wczytać danych ulic dla „${slug}”.`,
   noCities: 'Brak miast pasujących do wyszukiwania.',

@@ -135,6 +135,29 @@ describe('Game state machine (mock-data fallback)', () => {
     expect(game.getState().screen).toBe('cityselect');
   });
 
+  it('plays a configurable number of rounds per game', async () => {
+    __resetDataCaches();
+    const game = new Game({ rng: mulberry32(5), storage: new FakeStorage() });
+    await game.init();
+    game.setRoundsPerGame(3);
+    expect(game.getState().roundsPerGame).toBe(3);
+    await game.selectCity(MOCK_CITY.slug, false);
+    expect(game.getState().roundsPerGame).toBe(3);
+    for (let i = 0; i < 3; i++) {
+      expect(game.getState().screen).toBe('round');
+      game.submitGuess({ lat: 50.0605, lon: 19.9425 });
+      expect(game.getState().screen).toBe('result');
+      game.next();
+    }
+    expect(game.getState().screen).toBe('gameover');
+    expect(game.getState().rounds).toHaveLength(3);
+    // out-of-range values are clamped
+    game.setRoundsPerGame(999);
+    expect(game.getState().roundsPerGame).toBe(50);
+    game.setRoundsPerGame(0);
+    expect(game.getState().roundsPerGame).toBe(1);
+  });
+
   it('ignores guesses submitted outside the round screen', async () => {
     __resetDataCaches();
     const game = new Game({ rng: mulberry32(7), storage: new FakeStorage() });

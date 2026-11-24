@@ -39,6 +39,8 @@ export interface GameState {
   hardcore: boolean;
   /** 0-based index of the current round. */
   roundIndex: number;
+  /** How many rounds a game has (configurable in the UI, default ROUNDS_PER_GAME). */
+  roundsPerGame: number;
   rounds: RoundRecord[];
   totalScore: number;
   best: number;
@@ -88,6 +90,7 @@ export class Game {
       city: null,
       hardcore: false,
       roundIndex: 0,
+      roundsPerGame: ROUNDS_PER_GAME,
       rounds: [],
       totalScore: 0,
       best: this.readBest(),
@@ -184,11 +187,17 @@ export class Game {
     });
   }
 
+  /** Set how many rounds a game has (called from the city-select screen). */
+  setRoundsPerGame(n: number): void {
+    const clamped = Math.max(1, Math.min(50, Math.floor(n)));
+    this.set({ roundsPerGame: clamped });
+  }
+
   /** Advance from the result screen to the next round or to game over. */
   next(): void {
     if (this.state.screen !== 'result') return;
     const nextIndex = this.state.roundIndex + 1;
-    if (nextIndex >= this.targets.length || nextIndex >= ROUNDS_PER_GAME) {
+    if (nextIndex >= this.targets.length || nextIndex >= this.state.roundsPerGame) {
       const newBest = this.state.totalScore > this.state.best;
       const best = Math.max(this.state.best, this.state.totalScore);
       this.writeBest(best);
@@ -248,7 +257,7 @@ export class Game {
     if (forced && forced.length > 0 && names.length > 0) {
       // Test override: draw all rounds from the forced streets (repeats allowed).
       const out: StreetFeature[] = [];
-      for (let i = 0; i < ROUNDS_PER_GAME; i++) {
+      for (let i = 0; i < this.state.roundsPerGame; i++) {
         const n = names[Math.floor(this.rng() * names.length)];
         const arr = byName.get(n)!;
         out.push(arr[Math.floor(this.rng() * arr.length)]);
@@ -259,7 +268,7 @@ export class Game {
       const j = Math.floor(this.rng() * (i + 1));
       [names[i], names[j]] = [names[j], names[i]];
     }
-    return names.slice(0, Math.min(ROUNDS_PER_GAME, names.length)).map((n) => {
+    return names.slice(0, Math.min(this.state.roundsPerGame, names.length)).map((n) => {
       const arr = byName.get(n)!;
       return arr[Math.floor(this.rng() * arr.length)];
     });
