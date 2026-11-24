@@ -28,8 +28,8 @@ miasta z indeksu danych). Pliki danych pozostałych miast zostają w repo.
 Odległość „pudła” liczona jest zawsze do **najbliższego punktu na całej ulicy**:
 wszystkie segmenty OSM o tej samej nazwie traktowane są jako jedna ulica
 (OSM często dzieli ulicę na wiele części). Do testów ręcznych:
-`FORCE_TARGET_STREET` w `src/config.ts` wymusza konkretną ulicę jako cel
-każdej rundy (`null` = losowe ulice).
+`FORCE_TARGET_STREETS` w `src/config.ts` ogranicza cele rund do podanych ulic
+(obecnie „Santocka” i „26 Kwietnia”; `null` = losowe ulice z całego miasta).
 
 ## Build
 

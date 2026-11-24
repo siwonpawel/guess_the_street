@@ -1,7 +1,7 @@
 // Game state machine: CitySelect → Loading → Round → Result → (next Round | GameOver).
 // Pure logic (no DOM) — driven by main.ts/ui.ts and unit-tested in tests/game.test.ts.
 
-import { BEST_SCORE_KEY, FORCE_TARGET_STREET, ROUNDS_PER_GAME, scoreForDistance } from './config';
+import { BEST_SCORE_KEY, FORCE_TARGET_STREETS, ROUNDS_PER_GAME, scoreForDistance } from './config';
 import { STR } from './i18n';
 import {
   loadCities,
@@ -228,19 +228,33 @@ export class Game {
 
   /**
    * Pick the rounds' target streets: distinct street *names* (OSM often splits
-   * one street into many same-named ways). With FORCE_TARGET_STREET set, only
-   * that street is picked (falls back to random if the name is absent).
+   * one street into many same-named ways). With FORCE_TARGET_STREETS set, only
+   * those streets are picked (falls back to all if none match).
    */
   private pickTargets(): StreetFeature[] {
-    const forced = FORCE_TARGET_STREET;
+    const forced = FORCE_TARGET_STREETS;
+    let pool = this.features;
+    if (forced && forced.length > 0) {
+      const matched = this.features.filter((f) => forced.includes(f.properties.name));
+      if (matched.length > 0) pool = matched;
+    }
     const byName = new Map<string, StreetFeature[]>();
-    for (const f of this.features) {
-      if (forced && f.properties.name !== forced) continue;
+    for (const f of pool) {
       const arr = byName.get(f.properties.name);
       if (arr) arr.push(f);
       else byName.set(f.properties.name, [f]);
     }
     const names = [...byName.keys()];
+    if (forced && forced.length > 0 && names.length > 0) {
+      // Test override: draw all rounds from the forced streets (repeats allowed).
+      const out: StreetFeature[] = [];
+      for (let i = 0; i < ROUNDS_PER_GAME; i++) {
+        const n = names[Math.floor(this.rng() * names.length)];
+        const arr = byName.get(n)!;
+        out.push(arr[Math.floor(this.rng() * arr.length)]);
+      }
+      return out;
+    }
     for (let i = names.length - 1; i > 0; i--) {
       const j = Math.floor(this.rng() * (i + 1));
       [names[i], names[j]] = [names[j], names[i]];
