@@ -11,6 +11,18 @@
  *   5. writes a compact GeoJSON FeatureCollection to public/data/cities/<slug>.geojson,
  *   6. updates public/data/cities/index.json.
  *
+ * If a city has a `boundaryRelation` in scripts/cities.json (an OSM relation id,
+ * e.g. the city's admin boundary), the script additionally:
+ *   - queries Overpass for the relation geometry and stitches the member ways
+ *     with role "outer" into closed ring(s) (endpoints matched within ~1e-4 deg),
+ *   - keeps only streets with at least one vertex inside the boundary polygon
+ *     (ray casting, even-odd; vertices on the boundary count as inside) — this
+ *     drops streets that fall into the query bbox but outside the real city
+ *     (e.g. neighbouring villages),
+ *   - writes the ring(s) to public/data/cities/<slug>-boundary.geojson as a
+ *     FeatureCollection with one Polygon/MultiPolygon feature, so the app can
+ *     draw the real administrative border later.
+ *
  * Usage:
  *   node scripts/fetch-streets.mjs                # all cities
  *   node scripts/fetch-streets.mjs --only paris   # a single city
@@ -156,6 +168,184 @@ function simplifyWay(points, toleranceM) {
 
 const quantize = (v) => Math.round(v * 1e5) / 1e5;
 
+// ---------------------------------------------------------------------------
+// Administrative boundary support (boundaryRelation in scripts/cities.json)
+// ---------------------------------------------------------------------------
+
+// Max endpoint mismatch (in degrees, ~11 m) tolerated when stitching the
+// boundary ring(s) together.
+const BOUNDARY_SNAP_DEG = 1e-4;
+
+/**
+ * Fetch an OSM relation's geometry and stitch its "outer" member ways into
+ * closed ring(s). Ways are joined by matching endpoints (reversing a way when
+ * needed); endpoints closer than BOUNDARY_SNAP_DEG are snapped together.
+ * Returns an array of rings, each ring an array of {lat, lon} without a
+ * duplicated closing point.
+ */
+async function fetchBoundaryRings(relationId) {
+  const query = `[out:json][timeout:180];relation(${relationId});out geom;`;
+  console.log(`    boundary query: ${query}`);
+  const data = await overpassQuery(query);
+  const relations = (data.elements || []).filter((el) => el.type === 'relation' && el.id === relationId);
+  if (relations.length === 0) {
+    throw new Error(`relation ${relationId} not found in Overpass response`);
+  }
+  const outerWays = [];
+  let skipped = 0;
+  for (const rel of relations) {
+    for (const m of rel.members || []) {
+      if (m.role !== 'outer') continue;
+      if (m.type !== 'way' || !Array.isArray(m.geometry) || m.geometry.length < 2) {
+        skipped++;
+        continue;
+      }
+      outerWays.push(m.geometry);
+    }
+  }
+  if (skipped > 0) {
+    console.log(`    boundary: skipped ${skipped} non-way/empty outer member(s)`);
+  }
+  if (outerWays.length === 0) {
+    throw new Error(`relation ${relationId} has no usable outer way members`);
+  }
+  const rings = stitchRings(outerWays);
+  console.log(`    boundary: ${outerWays.length} outer ways -> ${rings.length} closed ring(s), ` +
+    `${rings.reduce((s, r) => s + r.length, 0)} vertices total`);
+  return rings;
+}
+
+const endpointDist = (a, b) => Math.max(Math.abs(a.lat - b.lat), Math.abs(a.lon - b.lon));
+
+/**
+ * Greedy ring stitcher: repeatedly extend the current chain's tail with any
+ * unused way whose either endpoint lies within BOUNDARY_SNAP_DEG of it
+ * (reversing the way if its tail matches). A chain whose tail returns to its
+ * head becomes a closed ring.
+ */
+function stitchRings(ways) {
+  const used = new Array(ways.length).fill(false);
+  const rings = [];
+  for (let i = 0; i < ways.length; i++) {
+    if (used[i]) continue;
+    used[i] = true;
+    const chain = ways[i].slice();
+    let extended = true;
+    while (extended) {
+      extended = false;
+      const tail = chain[chain.length - 1];
+      let bestJ = -1;
+      let bestEnd = 0;
+      let bestD = BOUNDARY_SNAP_DEG;
+      for (let j = 0; j < ways.length; j++) {
+        if (used[j]) continue;
+        const w = ways[j];
+        for (const end of [0, w.length - 1]) {
+          const d = endpointDist(w[end], tail);
+          if (d < bestD) {
+            bestD = d;
+            bestJ = j;
+            bestEnd = end;
+          }
+        }
+      }
+      if (bestJ !== -1) {
+        used[bestJ] = true;
+        const seg = bestEnd === 0 ? ways[bestJ] : ways[bestJ].slice().reverse();
+        chain.push(...seg.slice(1)); // drop the shared endpoint duplicate
+        extended = true;
+      }
+    }
+    if (endpointDist(chain[0], chain[chain.length - 1]) <= BOUNDARY_SNAP_DEG) {
+      chain.pop(); // ring closes: drop the duplicated closing point
+    } else {
+      console.warn(`    boundary: warning — a chain of ${chain.length} points did not close within ${BOUNDARY_SNAP_DEG} deg; closing it implicitly`);
+    }
+    if (chain.length >= 3) rings.push(chain);
+  }
+  return rings;
+}
+
+/** Point-on-segment test in lon/lat space; eps is in degrees. */
+function pointOnSegment(p, a, b, eps) {
+  const cross = (b.lon - a.lon) * (p.lat - a.lat) - (b.lat - a.lat) * (p.lon - a.lon);
+  const scale = Math.abs(b.lon - a.lon) + Math.abs(b.lat - a.lat);
+  if (scale > 0 && Math.abs(cross) / scale > eps) return false;
+  return (
+    p.lon >= Math.min(a.lon, b.lon) - eps && p.lon <= Math.max(a.lon, b.lon) + eps &&
+    p.lat >= Math.min(a.lat, b.lat) - eps && p.lat <= Math.max(a.lat, b.lat) + eps
+  );
+}
+
+/** Ray casting (even-odd) point-in-ring; points on the boundary count as inside. */
+function pointInRing(p, ring) {
+  const eps = 1e-9;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i];
+    const b = ring[j];
+    if (pointOnSegment(p, a, b, eps)) return true;
+    const crosses = a.lat > p.lat !== b.lat > p.lat;
+    if (crosses && p.lon < ((b.lon - a.lon) * (p.lat - a.lat)) / (b.lat - a.lat) + a.lon) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Even-odd point-in-polygon across all rings (outer rings + holes). */
+function pointInRings(p, rings) {
+  let inside = false;
+  for (const ring of rings) {
+    if (pointInRing(p, ring)) inside = !inside;
+  }
+  return inside;
+}
+
+/** True if any vertex of a [lon, lat] coordinate array lies inside the rings. */
+function anyVertexInside(coords, rings) {
+  for (const [lon, lat] of coords) {
+    if (pointInRings({ lat, lon }, rings)) return true;
+  }
+  return false;
+}
+
+/** Drop features with no vertex inside the boundary polygon. Returns {kept, dropped}. */
+function filterByBoundary(featureCollection, rings) {
+  const kept = [];
+  let dropped = 0;
+  for (const f of featureCollection.features) {
+    if (anyVertexInside(f.geometry.coordinates, rings)) kept.push(f);
+    else dropped++;
+  }
+  return { featureCollection: { type: 'FeatureCollection', features: kept }, dropped };
+}
+
+/** Boundary rings as a GeoJSON FeatureCollection with one Polygon/MultiPolygon feature. */
+function boundaryFeature(rings, relationId) {
+  // GeoJSON linear rings must be closed (first position == last position).
+  const q = rings.map((ring) => {
+    const coords = ring.map((p) => [quantize(p.lon), quantize(p.lat)]);
+    coords.push(coords[0].slice());
+    return coords;
+  });
+  const geometry =
+    q.length === 1
+      ? { type: 'Polygon', coordinates: [q[0]] }
+      : { type: 'MultiPolygon', coordinates: q.map((ring) => [ring]) };
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { boundaryRelation: relationId, source: 'OpenStreetMap' },
+        geometry,
+      },
+    ],
+  };
+}
+
+
 /** Filter raw Overpass elements and build the GeoJSON FeatureCollection. */
 function buildFeatureCollection(data, toleranceM) {
   const elements = Array.isArray(data.elements) ? data.elements : [];
@@ -193,6 +383,13 @@ async function fetchCity(city) {
 async function processCity(city) {
   const data = await fetchCity(city);
 
+  // Administrative boundary (optional): fetch + stitch the outer ring(s) first,
+  // so street filtering and the boundary GeoJSON use the same rings.
+  let boundaryRings = null;
+  if (city.boundaryRelation) {
+    boundaryRings = await fetchBoundaryRings(city.boundaryRelation);
+  }
+
   let tolerance = BASE_TOLERANCE_M;
   let { featureCollection, rawCount, kept } = buildFeatureCollection(data, tolerance);
   let json = JSON.stringify(featureCollection);
@@ -208,6 +405,19 @@ async function processCity(city) {
     bytes = Buffer.byteLength(json);
     console.log(`    retry at ${tolerance} m tolerance: ${kept} streets, ${fmtBytes(bytes)}`);
   }
+
+  // Boundary filter: drop streets with no vertex inside the admin polygon.
+  let droppedByBoundary = 0;
+  if (boundaryRings) {
+    const before = featureCollection.features.length;
+    const result = filterByBoundary(featureCollection, boundaryRings);
+    featureCollection = result.featureCollection;
+    droppedByBoundary = result.dropped;
+    json = JSON.stringify(featureCollection);
+    bytes = Buffer.byteLength(json);
+    console.log(`    boundary filter (relation ${city.boundaryRelation}): dropped ${droppedByBoundary} streets outside the polygon, kept ${featureCollection.features.length} (was ${before}), size now ${fmtBytes(bytes)}`);
+  }
+
   if (bytes > MAX_FILE_BYTES) {
     throw new Error(
       `${city.slug}: output ${fmtBytes(bytes)} exceeds the 2.5 MB hard limit even at ${tolerance} m tolerance. ` +
@@ -217,7 +427,15 @@ async function processCity(city) {
 
   const file = path.join(OUT_DIR, `${city.slug}.geojson`);
   await writeFile(file, json);
-  console.log(`    wrote ${file} (${fmtBytes(bytes)}, ${kept} features)`);
+  console.log(`    wrote ${file} (${fmtBytes(bytes)}, ${featureCollection.features.length} features)`);
+
+  if (boundaryRings) {
+    const boundaryFile = path.join(OUT_DIR, `${city.slug}-boundary.geojson`);
+    const boundaryJson = JSON.stringify(boundaryFeature(boundaryRings, city.boundaryRelation));
+    await writeFile(boundaryFile, boundaryJson);
+    console.log(`    wrote ${boundaryFile} (${fmtBytes(Buffer.byteLength(boundaryJson))}, ${boundaryRings.length} ring(s))`);
+  }
+
   return {
     slug: city.slug,
     name: city.name,
@@ -229,6 +447,7 @@ async function processCity(city) {
     source: 'OpenStreetMap',
     _bytes: bytes,
     _tolerance: tolerance,
+    _droppedByBoundary: droppedByBoundary,
   };
 }
 
@@ -279,7 +498,7 @@ async function main() {
   // Merge with the existing index so `--only <slug>` runs don't drop other cities.
   const bySlug = new Map(existingIndex.map((e) => [e.slug, e]));
   for (const r of results) {
-    const { _bytes, _tolerance, ...entry } = r;
+    const { _bytes, _tolerance, _droppedByBoundary, ...entry } = r;
     bySlug.set(r.slug, entry);
   }
   const ordered = [
@@ -292,7 +511,8 @@ async function main() {
 
   console.log('\nSummary:');
   for (const r of results) {
-    console.log(`  ${r.slug.padEnd(10)} ${String(r.streetCount).padStart(6)} streets  ${fmtBytes(r._bytes).padStart(9)}  (tolerance ${r._tolerance} m)`);
+    const dropped = r._droppedByBoundary ? `  (dropped by boundary: ${r._droppedByBoundary})` : '';
+    console.log(`  ${r.slug.padEnd(10)} ${String(r.streetCount).padStart(6)} streets  ${fmtBytes(r._bytes).padStart(9)}  (tolerance ${r._tolerance} m)${dropped}`);
   }
 }
 
