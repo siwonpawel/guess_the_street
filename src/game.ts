@@ -2,6 +2,7 @@
 // Pure logic (no DOM) — driven by main.ts/ui.ts and unit-tested in tests/game.test.ts.
 
 import { BEST_SCORE_KEY, ROUNDS_PER_GAME, scoreForDistance } from './config';
+import { STR } from './i18n';
 import {
   loadCities,
   loadCity,
@@ -104,6 +105,11 @@ export class Game {
     return this.state;
   }
 
+  /** Streets of the currently loaded city (used to render the hardcore street layer). */
+  getFeatures(): StreetFeature[] {
+    return this.features;
+  }
+
   /** Load the city index (or mock fallback) and go to the city select screen. */
   async init(): Promise<void> {
     const { cities, usingMock } = await loadCities();
@@ -118,7 +124,7 @@ export class Game {
     try {
       data = await loadCity(slug);
     } catch {
-      this.set({ screen: 'cityselect', error: `Could not load street data for “${slug}”.` });
+      this.set({ screen: 'cityselect', error: STR.cityError(slug) });
       return;
     }
     this.features = data.features;

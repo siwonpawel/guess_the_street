@@ -1,25 +1,25 @@
-# Guess the Street
+# Zgadnij Ulicę
 
-A static, frontend-only browser game. Pick a city, the game secretly picks a
-random named street in it, and you click on an OpenStreetMap **street-only**
-map (CARTO Positron tiles — no satellite/aerial imagery) where you think that
-street is. After each guess you see exactly how far off you were ("missed by
-137 m") plus the points you scored.
+Gra w całości frontendowa, bez backendu. Wybierasz miasto, gra losuje w nim
+losową nazwę ulicy, a Ty klikasz na mapie OpenStreetMap **tylko z warstwami
+ulic** (bez zdjęć satelitarnych) tam, gdzie Twoim zdaniem ona przebiega. Po
+każdym strzale dostajesz podsumowanie, jak bardzo się pomyliłeś („pudło:
+137 m”) oraz zdobyte punkty.
 
-See [SCOPING.md](SCOPING.md) for the full scoping plan (rules, architecture,
-data strategy, milestones, risks).
+Pełny plan zakresu (zasady, architektura, strategia danych, kamienie
+milowe, ryzyka) znajdziesz w [SCOPING.md](SCOPING.md) (po angielsku).
 
-## Develop
+## Uruchomienie deweloperskie
 
 ```sh
 npm install
 npm run dev
 ```
 
-If `public/data/cities/` has not been generated yet, the app automatically
-falls back to a small embedded demo city (a fictional street grid in Kraków,
-`src/mock-data.ts`) and shows a "demo data" badge, so the game is fully
-playable without the data pipeline.
+Jeśli `public/data/cities/` nie zostało jeszcze wygenerowane, aplikacja
+automatycznie przełącza się na wbudowane demo miasto (fikcyjna siatka ulic
+„w Krakowie”, `src/mock-data.ts`) i pokazuje plakietkę „dane demo”, więc gra
+jest w pełni grywalna bez uruchamiania pipeline'u danych.
 
 ## Build
 
@@ -27,45 +27,45 @@ playable without the data pipeline.
 npm run build
 ```
 
-Type-checks (`tsc --noEmit`) and produces a static site in `dist/`.
+Type-check (`tsc --noEmit`) i statyczna strona w `dist/`.
 
-## Test
+## Testy
 
 ```sh
 npm test
 ```
 
-Vitest unit tests for the geometry helpers (`src/geo.ts`), the scoring
-formula, target-street picking, and the game state machine
-(`tests/geo.test.ts`, `tests/game.test.ts`).
+Testy jednostkowe Vitest: geometria (`src/geo.ts`), wzór punktacji, losowanie
+ulic-celów oraz maszyna stanów gry (`tests/geo.test.ts`, `tests/game.test.ts`).
 
-## Preview a production build
+## Podgląd buildu produkcyjnego
 
 ```sh
 npm run preview
 ```
 
-## Data (city street GeoJSON)
+## Dane (GeoJSON ulic miast)
 
-At runtime the app only fetches same-origin static files under
-`data/cities/` (`index.json` + `<slug>.geojson`, served from
-`public/data/cities/`) and CARTO raster tiles. It never calls
-openstreetmap.org or Overpass at runtime. The GeoJSON is pre-baked at build
-time by the data pipeline — see `scripts/README.md` for how to regenerate it.
+W czasie działania aplikacja pobiera wyłącznie pliki statyczne z własnej
+domeny: `data/cities/` (`index.json` + `<slug>.geojson`, serwowane z
+`public/data/cities/`) oraz kafelki mapy z `tile.openstreetmap.org`. Nigdy
+nie wywołuje openstreetmap.org ani Overpass w runtime. GeoJSON jest
+przygotowywany z wyprzedzeniem przez pipeline danych — zobacz
+`scripts/README.md`, jak go regenerować.
 
-## Deploy
+## Wdrożenie
 
-`npm run build`, then serve `dist/` on any static host (GitHub Pages,
-Netlify, Cloudflare Pages). Vite is configured with `base: './'`, so the
-build works from any subpath. Required map attribution (© OpenStreetMap
-contributors, © CARTO) is shown both in the map corner and in the footer.
+`npm run build`, potem serwuj `dist/` na dowolnym hostingu statycznym
+(GitHub Pages, Netlify, Cloudflare Pages). Vite jest skonfigurowany z
+`base: './'`, więc build działa z każdej ścieżki. Wymagana atrybucja
+(© OpenStreetMap contributors) jest widoczna w rogu mapy i w stopce.
 
-### GitHub Pages (automatic)
+### GitHub Pages (automatycznie)
 
-`.github/workflows/deploy.yml` builds and tests on every push to `main`
-and deploys `dist/` to GitHub Pages. To enable it once:
+`.github/workflows/deploy.yml` buduje i testuje projekt przy każdym pushu
+do `main` i wdraża `dist/` na GitHub Pages. Aby włączyć raz:
 
-1. In the repo settings → Pages, set **Source** to *GitHub Actions*.
-2. Push to `main` (or run the workflow manually via *Run workflow*).
+1. W ustawieniach repo → Pages ustaw **Source** na *GitHub Actions*.
+2. Push do `main` (lub ręcznie uruchom workflow przez *Run workflow*).
 
-The game will be live at `https://<user>.github.io/<repo>/`.
+Gra będzie dostępna pod adresem `https://<użytkownik>.github.io/<repo>/`.

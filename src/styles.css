@@ -39,6 +39,15 @@ body {
   background: #dfe3e6;
 }
 
+/* Hardcore mode: plain background, only the OSM street geometry is drawn. */
+#map.hardcore-mode {
+  background: #f1f5f9;
+}
+
+#map.hardcore-mode .leaflet-tile-pane {
+  display: none;
+}
+
 #ui {
   position: absolute;
   inset: 0 0 var(--footer-h) 0;

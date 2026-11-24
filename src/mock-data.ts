@@ -7,7 +7,7 @@ import type { CityInfo, StreetFeature } from './data';
 export const MOCK_CITY: CityInfo = {
   slug: 'demo-krakow',
   name: 'Kraków (demo)',
-  country: 'Poland',
+  country: 'Polska',
   center: [19.94, 50.06], // [lon, lat]
   bbox: [19.925, 50.052, 19.955, 50.068], // [west, south, east, north]
   streetCount: 12,

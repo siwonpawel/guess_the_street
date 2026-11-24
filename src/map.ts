@@ -1,18 +1,18 @@
-// Leaflet wrapper: street-only basemaps (normal / hardcore), click-to-guess
-// (with a confirm pin on touch devices), and the round reveal drawing.
+// Leaflet wrapper: street-only map (normal: OSM raster street tiles;
+// hardcore: the baked OSM street geometry rendered without labels),
+// click-to-guess (with a confirm pin on touch devices), and the round reveal.
 
 import L from 'leaflet';
 import {
-  ATTRIBUTION_CARTO,
   ATTRIBUTION_OSM,
   MAX_ZOOM,
   MIN_ZOOM,
   TILE_SUBDOMAINS,
-  TILE_URL_HARDCORE,
   TILE_URL_NORMAL,
 } from './config';
-import type { CityInfo } from './data';
+import { polylinesOfFeature, type CityInfo, type StreetFeature } from './data';
 import type { LatLng, LngLatTuple } from './geo';
+import { STR } from './i18n';
 
 export interface RevealData {
   polylines: LngLatTuple[][];
@@ -26,7 +26,7 @@ const GUESS_COLOR = '#2563eb';
 export class GameMap {
   private map: L.Map | null = null;
   private normalLayer: L.TileLayer | null = null;
-  private hardcoreLayer: L.TileLayer | null = null;
+  private streetLayer: L.LayerGroup | null = null;
   private revealGroup: L.LayerGroup | null = null;
   private pin: L.Marker | null = null;
   private confirmBtn: HTMLButtonElement | null = null;
@@ -49,15 +49,9 @@ export class GameMap {
       });
       const ctrl = L.control.attribution({ prefix: false });
       ctrl.addAttribution(ATTRIBUTION_OSM);
-      ctrl.addAttribution(ATTRIBUTION_CARTO);
       ctrl.addTo(this.map);
 
       this.normalLayer = L.tileLayer(TILE_URL_NORMAL, {
-        subdomains: TILE_SUBDOMAINS,
-        maxZoom: MAX_ZOOM,
-        attribution: '',
-      });
-      this.hardcoreLayer = L.tileLayer(TILE_URL_HARDCORE, {
         subdomains: TILE_SUBDOMAINS,
         maxZoom: MAX_ZOOM,
         attribution: '',
@@ -73,7 +67,7 @@ export class GameMap {
       this.confirmBtn = document.createElement('button');
       this.confirmBtn.type = 'button';
       this.confirmBtn.className = 'confirm-pin hidden';
-      this.confirmBtn.textContent = 'Confirm guess at pin';
+      this.confirmBtn.textContent = STR.confirmPin;
       this.confirmBtn.addEventListener('click', (ev) => {
         ev.stopPropagation();
         this.confirmGuess();
@@ -98,14 +92,48 @@ export class GameMap {
     this.map.invalidateSize();
   }
 
-  /** Switch between normal (labels) and hardcore (no labels) street tiles. */
+  /**
+   * Provide the city's streets (baked OSM GeoJSON) for hardcore mode, where
+   * the map shows only street geometry — no raster tiles, no labels.
+   */
+  setStreets(features: StreetFeature[]): void {
+    if (!this.map) return;
+    if (this.streetLayer) {
+      this.map.removeLayer(this.streetLayer);
+      this.streetLayer = null;
+    }
+    const renderer = L.canvas({ padding: 0.5 });
+    const group = L.layerGroup();
+    for (const f of features) {
+      for (const line of polylinesOfFeature(f)) {
+        L.polyline(line.map(([lon, lat]) => L.latLng(lat, lon)), {
+          renderer,
+          color: '#94a3b8',
+          weight: 2,
+          opacity: 0.9,
+          interactive: false,
+        }).addTo(group);
+      }
+    }
+    this.streetLayer = group;
+    if (this.hardcore) group.addTo(this.map);
+  }
+
+  /**
+   * Switch between normal (OSM street tiles with labels) and hardcore
+   * (baked street geometry only, no labels, plain background).
+   */
+  private hardcore = false;
+
   setHardcore(hardcore: boolean): void {
-    if (!this.map || !this.normalLayer || !this.hardcoreLayer) return;
+    if (!this.map || !this.normalLayer) return;
+    this.hardcore = hardcore;
+    this.container.classList.toggle('hardcore-mode', hardcore);
     if (hardcore) {
       this.map.removeLayer(this.normalLayer);
-      this.hardcoreLayer.addTo(this.map);
+      this.streetLayer?.addTo(this.map);
     } else {
-      this.map.removeLayer(this.hardcoreLayer);
+      this.streetLayer?.removeFrom(this.map);
       this.normalLayer.addTo(this.map);
     }
   }

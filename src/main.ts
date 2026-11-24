@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 
-import { ATTRIBUTION_CARTO, ATTRIBUTION_OSM } from './config';
+import { ATTRIBUTION_OSM } from './config';
 import { Game } from './game';
 import { GameMap } from './map';
 import { UI } from './ui';
@@ -14,8 +14,8 @@ const uiEl = document.getElementById('ui');
 const footer = document.getElementById('footer');
 if (!app || !mapEl || !uiEl || !footer) throw new Error('missing #app/#map/#ui/#footer');
 
-// Required attribution in the footer as well as the map corner (ODbL / CARTO).
-footer.innerHTML = `${ATTRIBUTION_OSM} &middot; ${ATTRIBUTION_CARTO}`;
+// Required attribution in the footer as well as the map corner (ODbL).
+footer.innerHTML = ATTRIBUTION_OSM;
 
 const game = new Game();
 const map = new GameMap(mapEl, (ll) => game.submitGuess(ll));
@@ -33,6 +33,7 @@ game.subscribe((s) => {
   const newGame = s.screen === 'round' && s.roundIndex === 0 && s.rounds.length === 0;
   if (mapCitySlug !== s.city.slug || newGame) {
     map.init(s.city); // idempotent; fits bounds to the city
+    map.setStreets(game.getFeatures()); // hardcore layer source
     mapCitySlug = s.city.slug;
     revealedRound = -1;
   }

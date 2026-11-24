@@ -3,6 +3,7 @@
 import { ROUNDS_PER_GAME } from './config';
 import type { Game, GameState } from './game';
 import { formatDistance } from './geo';
+import { STR } from './i18n';
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => {
@@ -38,18 +39,14 @@ export class UI {
     this.root.innerHTML = `
       <section id="scr-cityselect" class="screen">
         <div class="panel cityselect-panel">
-          <h1>Guess the Street</h1>
-          <p class="tagline">
-            Pick a city. We name a random street in it. You click on a
-            street-only OpenStreetMap map where you think it is — no imagery,
-            and no labels in hardcore mode.
-          </p>
-          <input id="city-search" type="search" placeholder="Search cities…" autocomplete="off" />
-          <div class="difficulty" role="group" aria-label="Difficulty">
-            <button type="button" id="diff-normal" class="seg active">Normal (labels)</button>
-            <button type="button" id="diff-hardcore" class="seg">Hardcore (no labels)</button>
+          <h1>${STR.h1}</h1>
+          <p class="tagline">${STR.tagline}</p>
+          <input id="city-search" type="search" placeholder="${STR.searchPlaceholder}" autocomplete="off" />
+          <div class="difficulty" role="group" aria-label="${STR.difficultyLabel}">
+            <button type="button" id="diff-normal" class="seg active">${STR.diffNormal}</button>
+            <button type="button" id="diff-hardcore" class="seg">${STR.diffHardcore}</button>
           </div>
-          <div id="mock-badge" class="mock-badge hidden">demo data — generated city files not found</div>
+          <div id="mock-badge" class="mock-badge hidden">${STR.mockBadge}</div>
           <div id="city-error" class="error hidden"></div>
           <div id="city-grid" class="city-grid"></div>
         </div>
@@ -58,25 +55,25 @@ export class UI {
       <section id="scr-loading" class="screen hidden">
         <div class="loading-box">
           <div class="spinner" aria-hidden="true"></div>
-          <p id="loading-text">Loading…</p>
+          <p id="loading-text">${STR.loading}</p>
         </div>
       </section>
 
       <section id="scr-gameover" class="screen hidden">
         <div class="panel gameover-panel">
-          <h2>Game over</h2>
+          <h2>${STR.gameOver}</h2>
           <div id="go-total" class="go-total"></div>
           <div id="go-best" class="go-best"></div>
-          <div id="go-newbest" class="newbest hidden">New best!</div>
+          <div id="go-newbest" class="newbest hidden">${STR.newBest}</div>
           <table class="go-table">
             <thead>
-              <tr><th>#</th><th>Street</th><th>Missed by</th><th>Points</th></tr>
+              <tr><th>${STR.thRound}</th><th>${STR.thStreet}</th><th>${STR.thMissed}</th><th>${STR.thPoints}</th></tr>
             </thead>
             <tbody id="go-tbody"></tbody>
           </table>
           <div class="btn-row">
-            <button type="button" id="btn-again" class="btn primary">Play again (same city)</button>
-            <button type="button" id="btn-change" class="btn">Change city</button>
+            <button type="button" id="btn-again" class="btn primary">${STR.playAgain}</button>
+            <button type="button" id="btn-change" class="btn">${STR.changeCity}</button>
           </div>
         </div>
       </section>
@@ -87,14 +84,14 @@ export class UI {
           <span id="hud-find" class="hud-chip hud-find"></span>
           <span id="hud-score" class="hud-chip"></span>
         </div>
-        <div id="hud-hint" class="hud-hint">Click the map to guess</div>
+        <div id="hud-hint" class="hud-hint">${STR.hint}</div>
       </div>
 
       <section id="result-panel" class="panel hidden">
-        <div class="result-target">Target: <strong id="res-name"></strong></div>
+        <div class="result-target">${STR.resultTarget}<strong id="res-name"></strong></div>
         <div id="res-dist" class="result-dist"></div>
         <div class="result-sub"><span id="res-points"></span> · <span id="res-total"></span></div>
-        <button type="button" id="btn-next" class="btn primary">Next round</button>
+        <button type="button" id="btn-next" class="btn primary">${STR.nextRound}</button>
       </section>
     `;
   }
@@ -134,26 +131,27 @@ export class UI {
 
     if (s.screen === 'cityselect') this.renderCities(s);
     if (s.screen === 'loading') {
-      this.el('loading-text').textContent = s.city
-        ? `Loading ${s.city.name} street data…`
-        : 'Loading…';
+      this.el('loading-text').textContent = s.city ? STR.loadingCity(s.city.name) : STR.loading;
     }
 
     if (inGame) {
-      this.el('hud-round').textContent = `Round ${Math.min(s.roundIndex + 1, ROUNDS_PER_GAME)}/${ROUNDS_PER_GAME}`;
-      this.el('hud-find').textContent = `Find: ${s.targetName ?? '—'}`;
-      this.el('hud-score').textContent = `Score ${s.totalScore}`;
-      this.el('hud-hint').textContent = s.screen === 'round' ? 'Click the map to guess' : '';
+      this.el('hud-round').textContent = STR.round(
+        Math.min(s.roundIndex + 1, ROUNDS_PER_GAME),
+        ROUNDS_PER_GAME,
+      );
+      this.el('hud-find').textContent = STR.find(s.targetName ?? '—');
+      this.el('hud-score').textContent = STR.score(s.totalScore);
+      this.el('hud-hint').textContent = s.screen === 'round' ? STR.hint : '';
     }
 
     if (s.screen === 'result' && s.rounds.length > 0) {
       const r = s.rounds[s.rounds.length - 1];
       this.el('res-name').textContent = r.targetName;
       this.el('res-dist').textContent = formatDistance(r.distanceM);
-      this.el('res-points').textContent = `+${r.points} pts`;
-      this.el('res-total').textContent = `Total ${s.totalScore}`;
+      this.el('res-points').textContent = STR.points(r.points);
+      this.el('res-total').textContent = STR.total(s.totalScore);
       const last = s.roundIndex + 1 >= ROUNDS_PER_GAME;
-      this.el<HTMLButtonElement>('btn-next').textContent = last ? 'See results' : 'Next round';
+      this.el<HTMLButtonElement>('btn-next').textContent = last ? STR.seeResults : STR.nextRound;
     }
 
     if (s.screen === 'gameover') this.renderGameOver(s);
@@ -169,7 +167,7 @@ export class UI {
     if (cities.length === 0) {
       const p = document.createElement('p');
       p.className = 'empty';
-      p.textContent = 'No cities match your search.';
+      p.textContent = STR.noCities;
       grid.appendChild(p);
       return;
     }
@@ -179,7 +177,7 @@ export class UI {
       card.className = 'city-card';
       card.innerHTML = `
         <span class="city-name">${escapeHtml(c.name)}</span>
-        <span class="city-meta">${escapeHtml(c.country)} · ${c.streetCount} streets</span>
+        <span class="city-meta">${escapeHtml(STR.cityMeta(c.country, c.streetCount))}</span>
       `;
       card.addEventListener('click', () => {
         void this.game.selectCity(c.slug, this.hardcoreChoice);
@@ -189,8 +187,8 @@ export class UI {
   }
 
   private renderGameOver(s: GameState): void {
-    this.el('go-total').textContent = `Total score: ${s.totalScore}`;
-    this.el('go-best').textContent = `Best: ${s.best}`;
+    this.el('go-total').textContent = STR.totalScore(s.totalScore);
+    this.el('go-best').textContent = STR.best(s.best);
     this.el('go-newbest').classList.toggle('hidden', !s.newBest);
     const tbody = this.el('go-tbody');
     tbody.innerHTML = '';

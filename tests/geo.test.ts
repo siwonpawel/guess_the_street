@@ -83,8 +83,8 @@ describe('pointToPolylineMeters / nearestPointOnPolyline', () => {
 
 describe('formatDistance', () => {
   it('says "on the street!" below 1 m', () => {
-    expect(formatDistance(0)).toBe('on the street!');
-    expect(formatDistance(0.4)).toBe('on the street!');
+    expect(formatDistance(0)).toBe('na ulicy!');
+    expect(formatDistance(0.4)).toBe('na ulicy!');
   });
 
   it('formats meters below 1 km', () => {
@@ -93,8 +93,8 @@ describe('formatDistance', () => {
   });
 
   it('formats km with two decimals at 1 km and above', () => {
-    expect(formatDistance(1000)).toBe('1.00 km');
-    expect(formatDistance(1523)).toBe('1.52 km');
+    expect(formatDistance(1000)).toBe('1,00 km');
+    expect(formatDistance(1523)).toBe('1,52 km');
   });
 });
 

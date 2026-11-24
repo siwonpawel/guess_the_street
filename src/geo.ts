@@ -1,5 +1,7 @@
 // Pure geometry helpers. No DOM, no Leaflet — unit-tested in tests/geo.test.ts.
 
+import { STR } from './i18n';
+
 export interface LatLng {
   lat: number;
   lon: number;
@@ -121,11 +123,11 @@ export function pointToPolylineMeters(p: LatLng, coords: LngLatTuple[]): number 
   return nearestPointOnPolyline(p, coords).distanceMeters;
 }
 
-/** Human-readable miss distance: "on the street!" / "X m" / "X.XX km". */
+/** Human-readable miss distance (Polish): "na ulicy!" / "X m" / "X,XX km". */
 export function formatDistance(m: number): string {
-  if (m < 1) return 'on the street!';
-  if (m < 1000) return `${Math.round(m)} m`;
-  return `${(m / 1000).toFixed(2)} km`;
+  if (m < 1) return STR.onStreet;
+  if (m < 1000) return STR.meters(Math.round(m));
+  return STR.kilometers(m / 1000);
 }
 
 /** Diagonal of a [west, south, east, north] bbox, in meters. */

@@ -16,22 +16,16 @@ export const DATA_BASE = 'data/cities/';
 /** localStorage key for the best total score. */
 export const BEST_SCORE_KEY = 'gts.best';
 
-// Basemap tiles — street-only CARTO Positron styles. No imagery anywhere.
-// Note: CARTO serves "API KEY REQUIRED" placeholder tiles unless a
-// `?key=<CARTO Basemaps API key>` query param is appended (see
-// https://carto.com/basemaps/apikey/). When deploying with a key, append it
-// to both URLs below; the host stays basemaps.cartocdn.com either way.
-export const TILE_URL_NORMAL =
-  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-export const TILE_URL_HARDCORE =
-  'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
-export const TILE_SUBDOMAINS = 'abcd';
+// Basemap tiles — standard OpenStreetMap raster tiles (a street map; no
+// satellite/aerial imagery anywhere). Keyless and fine for low-traffic use
+// under the OSM tile usage policy. (CARTO Positron basemaps now require an
+// API key, so they are not used.)
+export const TILE_URL_NORMAL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+export const TILE_SUBDOMAINS = 'abc';
 
-// Required attribution (ODbL / CARTO terms) — shown in the map corner and footer.
+// Required attribution (ODbL) — shown in the map corner and footer.
 export const ATTRIBUTION_OSM =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-export const ATTRIBUTION_CARTO =
-  '&copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 /** Map zoom clamp. */
 export const MIN_ZOOM = 10;
