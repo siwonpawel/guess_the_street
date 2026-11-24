@@ -16,6 +16,12 @@ export const DATA_BASE = 'data/cities/';
 /** localStorage key for the best total score. */
 export const BEST_SCORE_KEY = 'gts.best';
 
+/**
+ * City slugs shown on the city-select screen. Set to `['szczecin']` to show
+ * only Szczecin; set to `null` to show every city present in the data index.
+ */
+export const VISIBLE_CITY_SLUGS: string[] | null = ['szczecin'];
+
 // Basemap tiles — standard OpenStreetMap raster tiles (a street map; no
 // satellite/aerial imagery anywhere). Keyless and fine for low-traffic use
 // under the OSM tile usage policy. (CARTO Positron basemaps now require an

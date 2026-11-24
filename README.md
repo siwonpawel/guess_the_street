@@ -21,6 +21,10 @@ automatycznie przełącza się na wbudowane demo miasto (fikcyjna siatka ulic
 „w Krakowie”, `src/mock-data.ts`) i pokazuje plakietkę „dane demo”, więc gra
 jest w pełni grywalna bez uruchamiania pipeline'u danych.
 
+Na ekranie wyboru miasta pokazuje się tylko **Szczecin** — sterowane przez
+`VISIBLE_CITY_SLUGS` w `src/config.ts` (ustaw `null`, aby pokazać wszystkie
+miasta z indeksu danych). Pliki danych pozostałych miast zostają w repo.
+
 ## Build
 
 ```sh

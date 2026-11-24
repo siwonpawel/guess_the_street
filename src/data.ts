@@ -3,7 +3,7 @@
 // when the generated data files are not available.
 
 import type { Feature, LineString, MultiLineString } from 'geojson';
-import { DATA_BASE } from './config';
+import { DATA_BASE, VISIBLE_CITY_SLUGS } from './config';
 import { MOCK_CITY, MOCK_STREET_FEATURES } from './mock-data';
 
 export interface CityInfo {
@@ -61,7 +61,10 @@ export async function loadCities(): Promise<{ cities: CityInfo[]; usingMock: boo
     if (!res.ok) throw new Error(`index.json: HTTP ${res.status}`);
     const data = (await res.json()) as CityInfo[];
     if (!Array.isArray(data) || data.length === 0) throw new Error('index.json: no cities');
-    citiesCache = { cities: data.map(normalizeIndexCity), usingMock: false };
+    const slugs = VISIBLE_CITY_SLUGS;
+    const visible = slugs ? data.filter((c) => slugs.includes(c.slug)) : data;
+    if (visible.length === 0) throw new Error('index.json: no visible cities');
+    citiesCache = { cities: visible.map(normalizeIndexCity), usingMock: false };
   } catch {
     citiesCache = { cities: [MOCK_CITY], usingMock: true };
   }
