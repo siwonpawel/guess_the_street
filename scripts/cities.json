@@ -1,0 +1,37 @@
+[
+  {
+    "slug": "paris",
+    "name": "Paris",
+    "country": "France",
+    "center": [48.86, 2.33],
+    "bbox": [48.84, 2.29, 48.88, 2.37]
+  },
+  {
+    "slug": "london",
+    "name": "London",
+    "country": "UK",
+    "center": [51.525, -0.1],
+    "bbox": [51.508, -0.125, 51.542, -0.072]
+  },
+  {
+    "slug": "new-york",
+    "name": "New York",
+    "country": "USA",
+    "center": [40.765, -73.98],
+    "bbox": [40.71, -74.01, 40.82, -73.95]
+  },
+  {
+    "slug": "tokyo",
+    "name": "Tokyo",
+    "country": "Japan",
+    "center": [35.7, 139.77],
+    "bbox": [35.65, 139.69, 35.75, 139.85]
+  },
+  {
+    "slug": "krakow",
+    "name": "Kraków",
+    "country": "Poland",
+    "center": [50.06, 19.965],
+    "bbox": [50.02, 19.89, 50.095, 20.04]
+  }
+]
