@@ -23,6 +23,47 @@ export interface RevealData {
 const ACCENT = '#e11d48';
 const GUESS_COLOR = '#2563eb';
 
+/** Look of one hardcore street class (OSM-carto-like palette, no labels). */
+interface HardcoreStyle {
+  color: string;
+  weight: number;
+  /** Slightly wider, darker line drawn underneath (major roads only). */
+  casing?: { color: string; weight: number };
+  dashArray?: string;
+}
+
+/**
+ * OSM-carto-like styling for the baked street geometry. There is no keyless
+ * raster tile style without labels, so hardcore mode draws the GeoJSON street
+ * segments on a canvas in the standard OSM palette instead of using tiles.
+ */
+function hardcoreStyle(highway?: string): HardcoreStyle {
+  switch (highway) {
+    case 'motorway':
+    case 'trunk':
+      return { color: '#e892a2', weight: 5, casing: { color: '#cf7d8c', weight: 7 } };
+    case 'primary':
+      return { color: '#fcd6a4', weight: 4, casing: { color: '#e0b184', weight: 5.5 } };
+    case 'secondary':
+      return { color: '#f7fabf', weight: 3.5, casing: { color: '#dde0a8', weight: 5 } };
+    case 'tertiary':
+      return { color: '#f7fabf', weight: 2.5 };
+    case 'residential':
+    case 'unclassified':
+    case 'living_street':
+    case 'service':
+      return { color: '#ffffff', weight: 2.5 };
+    case 'pedestrian':
+    case 'footway':
+    case 'path':
+    case 'steps':
+    case 'cycleway':
+      return { color: '#ffffff', weight: 1.5, dashArray: '4 3' };
+    default:
+      return { color: '#ffffff', weight: 2 };
+  }
+}
+
 export class GameMap {
   private map: L.Map | null = null;
   private normalLayer: L.TileLayer | null = null;
@@ -94,7 +135,8 @@ export class GameMap {
 
   /**
    * Provide the city's streets (baked OSM GeoJSON) for hardcore mode, where
-   * the map shows only street geometry — no raster tiles, no labels.
+   * the map shows only street geometry styled like the OSM map — no raster
+   * tiles, no labels.
    */
   setStreets(features: StreetFeature[]): void {
     if (!this.map) return;
@@ -102,15 +144,28 @@ export class GameMap {
       this.map.removeLayer(this.streetLayer);
       this.streetLayer = null;
     }
+    // One shared canvas renderer keeps ~9k segments fast.
     const renderer = L.canvas({ padding: 0.5 });
     const group = L.layerGroup();
     for (const f of features) {
+      const style = hardcoreStyle(f.properties?.highway);
       for (const line of polylinesOfFeature(f)) {
-        L.polyline(line.map(([lon, lat]) => L.latLng(lat, lon)), {
+        const latlngs = line.map(([lon, lat]) => L.latLng(lat, lon));
+        if (style.casing) {
+          L.polyline(latlngs, {
+            renderer,
+            color: style.casing.color,
+            weight: style.casing.weight,
+            opacity: 0.9,
+            interactive: false,
+          }).addTo(group);
+        }
+        L.polyline(latlngs, {
           renderer,
-          color: '#94a3b8',
-          weight: 2,
-          opacity: 0.9,
+          color: style.color,
+          weight: style.weight,
+          opacity: 0.95,
+          ...(style.dashArray ? { dashArray: style.dashArray } : {}),
           interactive: false,
         }).addTo(group);
       }
@@ -121,7 +176,7 @@ export class GameMap {
 
   /**
    * Switch between normal (OSM street tiles with labels) and hardcore
-   * (baked street geometry only, no labels, plain background).
+   * (baked street geometry in the OSM palette, no labels, OSM land background).
    */
   private hardcore = false;
 

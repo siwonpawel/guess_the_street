@@ -39,9 +39,10 @@ body {
   background: #dfe3e6;
 }
 
-/* Hardcore mode: plain background, only the OSM street geometry is drawn. */
+/* Hardcore mode: OSM land background; the baked street geometry is drawn on
+   canvas in the OSM-carto palette (see src/map.ts) — no tiles, no labels. */
 #map.hardcore-mode {
-  background: #f1f5f9;
+  background: #f2efe9;
 }
 
 #map.hardcore-mode .leaflet-tile-pane {

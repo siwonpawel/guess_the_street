@@ -31,6 +31,17 @@ wszystkie segmenty OSM o tej samej nazwie traktowane są jako jedna ulica
 `FORCE_TARGET_STREETS` w `src/config.ts` ogranicza cele rund do podanych ulic
 (np. `['Santocka', '26 Kwietnia']`; `null` = losowe ulice z całego miasta).
 
+## Tryby trudności
+
+- **Normalny** — klasyczne kafelki OpenStreetMap z nazwami ulic.
+- **Hardcore (bez nazw)** — kafelki są wyłączone; geometria ulic z
+  przygotowanego GeoJSON (OSM) jest rysowana bezpośrednio na płótnie w palecie
+  zbliżonej do standardowej mapy OSM (tło `#f2efe9`, arterie kolorowe
+  (`#e892a2` / `#fcd6a4` / `#f7fabf`), ulice osiedlowe białe, piesze cieńsze i
+  przerywane), ale **bez żadnych nazw** — trzeba rozpoznać ulicę po jej
+  przebiegu. Nie ma keylessowych kafelków bez etykiet, więc tryb hardcore
+  rysuje zap bakowaną geometrię ulic zamiast kafelków.
+
 ## Build
 
 ```sh
