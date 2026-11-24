@@ -17,6 +17,10 @@ export const DATA_BASE = 'data/cities/';
 export const BEST_SCORE_KEY = 'gts.best';
 
 // Basemap tiles — street-only CARTO Positron styles. No imagery anywhere.
+// Note: CARTO serves "API KEY REQUIRED" placeholder tiles unless a
+// `?key=<CARTO Basemaps API key>` query param is appended (see
+// https://carto.com/basemaps/apikey/). When deploying with a key, append it
+// to both URLs below; the host stays basemaps.cartocdn.com either way.
 export const TILE_URL_NORMAL =
   'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 export const TILE_URL_HARDCORE =

@@ -28,7 +28,10 @@ let revealedRound = -1;
 game.subscribe((s) => {
   ui.render(s);
   if (!s.city || s.screen === 'cityselect') return;
-  if (mapCitySlug !== s.city.slug) {
+  // (Re)fit the map when the city changes or a new game starts — also when the
+  // same city is replayed, so the view resets from the last reveal zoom.
+  const newGame = s.screen === 'round' && s.roundIndex === 0 && s.rounds.length === 0;
+  if (mapCitySlug !== s.city.slug || newGame) {
     map.init(s.city); // idempotent; fits bounds to the city
     mapCitySlug = s.city.slug;
     revealedRound = -1;

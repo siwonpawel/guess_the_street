@@ -134,7 +134,9 @@ export class UI {
 
     if (s.screen === 'cityselect') this.renderCities(s);
     if (s.screen === 'loading') {
-      this.el('loading-text').textContent = `Loading ${s.city ? s.city.name : 'city'}…`;
+      this.el('loading-text').textContent = s.city
+        ? `Loading ${s.city.name} street data…`
+        : 'Loading…';
     }
 
     if (inGame) {
