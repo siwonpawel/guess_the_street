@@ -28,7 +28,7 @@ export const VISIBLE_CITY_SLUGS: string[] | null = ['szczecin'];
  * random streets from the whole city. (Independent of this flag, all
  * same-named OSM segments always count as one street for the miss distance.)
  */
-export const FORCE_TARGET_STREETS: string[] | null = ['Santocka', '26 Kwietnia'];
+export const FORCE_TARGET_STREETS: string[] | null = null;
 
 // Basemap tiles — standard OpenStreetMap raster tiles (a street map; no
 // satellite/aerial imagery anywhere). Keyless and fine for low-traffic use
