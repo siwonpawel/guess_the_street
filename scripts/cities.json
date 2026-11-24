@@ -53,6 +53,7 @@
     "name": "Szczecin",
     "country": "Polska",
     "center": [53.4298, 14.5929],
-    "bbox": [53.32, 14.442, 53.539, 14.807]
+    "bbox": [53.31, 14.43, 53.55, 14.82],
+    "boundaryRelation": 342935
   }
 ]
