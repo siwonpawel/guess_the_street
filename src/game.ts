@@ -6,7 +6,6 @@ import { STR } from './i18n';
 import {
   loadCities,
   loadCity,
-  pickTargetStreets,
   polylinesOfFeature,
   type CityData,
   type CityInfo,
@@ -57,6 +56,8 @@ export type Listener = (state: GameState) => void;
 export interface GameOptions {
   rng?: () => number;
   storage?: Pick<Storage, 'getItem' | 'setItem'> | null;
+  /** Test hook: override the loaded city's street features. */
+  features?: StreetFeature[];
 }
 
 function defaultStorage(): Pick<Storage, 'getItem' | 'setItem'> | null {
@@ -74,10 +75,12 @@ export class Game {
   private targets: StreetFeature[] = [];
   private readonly rng: () => number;
   private readonly storage: Pick<Storage, 'getItem' | 'setItem'> | null;
+  private readonly forcedFeatures: StreetFeature[] | null;
 
   constructor(opts: GameOptions = {}) {
     this.rng = opts.rng ?? Math.random;
     this.storage = opts.storage === undefined ? defaultStorage() : opts.storage;
+    this.forcedFeatures = opts.features ?? null;
     this.state = {
       screen: 'loading',
       cities: [],
@@ -127,7 +130,7 @@ export class Game {
       this.set({ screen: 'cityselect', error: STR.cityError(slug) });
       return;
     }
-    this.features = data.features;
+    this.features = this.forcedFeatures ?? data.features;
     this.targets = this.pickTargets();
     const scaleM = bboxDiagonalMeters(data.city.bbox) / 2;
     this.set({
@@ -224,22 +227,36 @@ export class Game {
   }
 
   /**
-   * Debug override: when FORCE_TARGET_STREET is set, every round targets that
-   * street (falls back to random if the name is not in the city data).
+   * Pick the rounds' target streets: distinct street *names* (OSM often splits
+   * one street into many same-named ways). With FORCE_TARGET_STREET set, only
+   * that street is picked (falls back to random if the name is absent).
    */
   private pickTargets(): StreetFeature[] {
     const forced = FORCE_TARGET_STREET;
-    const pool = forced ? this.features.filter((f) => f.properties.name === forced) : this.features;
-    return pickTargetStreets(pool.length > 0 ? pool : this.features, ROUNDS_PER_GAME, this.rng);
+    const byName = new Map<string, StreetFeature[]>();
+    for (const f of this.features) {
+      if (forced && f.properties.name !== forced) continue;
+      const arr = byName.get(f.properties.name);
+      if (arr) arr.push(f);
+      else byName.set(f.properties.name, [f]);
+    }
+    const names = [...byName.keys()];
+    for (let i = names.length - 1; i > 0; i--) {
+      const j = Math.floor(this.rng() * (i + 1));
+      [names[i], names[j]] = [names[j], names[i]];
+    }
+    return names.slice(0, Math.min(ROUNDS_PER_GAME, names.length)).map((n) => {
+      const arr = byName.get(n)!;
+      return arr[Math.floor(this.rng() * arr.length)];
+    });
   }
 
   /**
-   * All OSM segments belonging to the target street. With FORCE_TARGET_STREET
-   * set, same-named segments are grouped into one street; otherwise the target
-   * feature alone is used.
+   * All OSM segments belonging to the target street: every feature with the
+   * same name counts as one street, so the miss distance is measured to the
+   * closest point on any of its segments.
    */
   private targetGroup(target: StreetFeature): StreetFeature[] {
-    if (!FORCE_TARGET_STREET) return [target];
     const group = this.features.filter((f) => f.properties.name === target.properties.name);
     return group.length > 0 ? group : [target];
   }

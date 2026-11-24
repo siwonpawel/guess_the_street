@@ -159,4 +159,31 @@ describe('Game state machine (mock-data fallback)', () => {
     expect(s.rounds[0].points).toBe(scoreForDistance(expected, s.scaleM));
     expect(s.reveal!.nearest).toBeDefined();
   });
+
+  it('measures distance to the closest segment of the WHOLE same-named street', async () => {
+    __resetDataCaches();
+    // one street split into two far-apart OSM segments with the same name
+    const segA: StreetFeature = {
+      type: 'Feature',
+      properties: { name: 'Testowa' },
+      geometry: { type: 'LineString', coordinates: [[19.9, 50.05], [19.91, 50.05]] },
+    };
+    const segB: StreetFeature = {
+      type: 'Feature',
+      properties: { name: 'Testowa' },
+      geometry: { type: 'LineString', coordinates: [[19.95, 50.06], [19.96, 50.06]] },
+    };
+    const game = new Game({ rng: mulberry32(1), storage: new FakeStorage(), features: [segA, segB] });
+    await game.init();
+    await game.selectCity(MOCK_CITY.slug, false);
+    // guess ~10 m north of segment B — far from segment A
+    const guess = { lat: 50.06 + 10 / 111320, lon: 19.955 };
+    game.submitGuess(guess);
+    const s = game.getState();
+    expect(s.rounds[0].targetName).toBe('Testowa');
+    expect(s.rounds[0].distanceM).toBeLessThan(15); // close to segB, not to segA
+    expect(s.rounds[0].distanceM).toBeCloseTo(10, 0);
+    // the reveal highlights every same-named segment
+    expect(s.reveal!.polylines.length).toBe(2);
+  });
 });

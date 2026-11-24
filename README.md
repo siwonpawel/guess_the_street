@@ -25,10 +25,11 @@ Na ekranie wyboru miasta pokazuje się tylko **Szczecin** — sterowane przez
 `VISIBLE_CITY_SLUGS` w `src/config.ts` (ustaw `null`, aby pokazać wszystkie
 miasta z indeksu danych). Pliki danych pozostałych miast zostają w repo.
 
-Do testów ręcznych: `FORCE_TARGET_STREET` w `src/config.ts` wymusza konkretną
-ulicę jako cel każdej rundy (obecnie „Dworcowa” — wszystkie segmenty OSM o tej
-nazwie liczą się jako jedna ulica; odległość to odległość do najbliższego
-punktu na dowolnym segmencie). Ustaw `null`, aby wrócić do losowych ulic.
+Odległość „pudła” liczona jest zawsze do **najbliższego punktu na całej ulicy**:
+wszystkie segmenty OSM o tej samej nazwie traktowane są jako jedna ulica
+(OSM często dzieli ulicę na wiele części). Do testów ręcznych:
+`FORCE_TARGET_STREET` w `src/config.ts` wymusza konkretną ulicę jako cel
+każdej rundy (`null` = losowe ulice).
 
 ## Build
 

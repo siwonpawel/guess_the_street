@@ -23,8 +23,9 @@ export const BEST_SCORE_KEY = 'gts.best';
 export const VISIBLE_CITY_SLUGS: string[] | null = ['szczecin'];
 
 /**
- * Debug override: when set, every round targets this street name (all OSM
- * segments with this name count as one street). `null` = random street.
+ * Debug override: when set, every round targets this street name.
+ * `null` = random streets. (Independent of this flag, all same-named OSM
+ * segments always count as one street when measuring the miss distance.)
  */
 export const FORCE_TARGET_STREET: string | null = null;
 
